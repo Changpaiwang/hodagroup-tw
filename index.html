@@ -540,7 +540,7 @@ footer{background:#060e22;padding:30px 48px;border-top:1px solid rgba(232,200,74
       </div>
       <div class="cf">
         <div class="cf-ttl">預約免費諮詢</div>
-        <form id="cf" novalidate>
+        <form id="cf" action="https://formspree.io/f/xpqogqpp" method="POST" novalidate>
           <div class="f2">
             <div class="fg"><label for="fn">姓名</label><input type="text" id="fn" name="name" placeholder="請輸入姓名" required></div>
             <div class="fg"><label for="fp">聯絡電話</label><input type="tel" id="fp" name="phone" placeholder="0912-345-678" required></div>
@@ -583,10 +583,24 @@ document.getElementById('cf').addEventListener('submit',function(e){
   var p=document.getElementById('fp').value.trim();
   var t=document.getElementById('ft').value;
   if(!n||!p||!t){alert('請填寫姓名、電話及服務類型');return;}
-  var b=encodeURIComponent('姓名：'+n+'\n電話：'+p+'\n項目：'+t+'\n區域：'+(document.getElementById('fa').value||'未填')+'\n備註：'+(document.getElementById('fno').value||'無'));
-  window.location.href='mailto:info@hodagroup.tw?subject='+encodeURIComponent('【官網諮詢】'+n+' - '+t)+'&body='+b;
-  document.getElementById('cf').style.display='none';
-  document.getElementById('fs').style.display='block';
+  var form=document.getElementById('cf');
+  var btn=form.querySelector('button[type=submit]');
+  btn.disabled=true;btn.textContent='送出中...';
+  var data=new FormData(form);
+  fetch('https://formspree.io/f/xpqogqpp',{method:'POST',body:data,headers:{Accept:'application/json'}})
+    .then(function(r){
+      if(r.ok){
+        form.style.display='none';
+        document.getElementById('fs').style.display='block';
+      } else {
+        alert('送出失敗，請直接致電 02-2771-3838');
+        btn.disabled=false;btn.textContent='送出諮詢申請';
+      }
+    })
+    .catch(function(){
+      alert('網路錯誤，請直接致電 02-2771-3838');
+      btn.disabled=false;btn.textContent='送出諮詢申請';
+    });
 });
 var secs=document.querySelectorAll('section[id]');
 var nls=document.querySelectorAll('.nav-r a:not(.nav-cta)');
