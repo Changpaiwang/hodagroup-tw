@@ -625,6 +625,58 @@
       .cis-nav-vl, .cis-nav-sub { display: none; }
     }
 
+  
+  /* ─── MOBILE SECOND-ROW NAV ─── */
+  @media(max-width:900px) {
+    .hero { padding-top: 148px !important; }
+  }
+  .mob-nav {
+    display: none;                 /* hidden on desktop */
+  }
+  @media(max-width:900px) {
+    .mob-nav {
+      display: flex;
+      position: fixed;
+      top: 64px;                   /* sits below the main navbar */
+      left: 0; right: 0;
+      z-index: 198;
+      background: rgba(13,26,75,0.98);
+      backdrop-filter: blur(10px);
+      padding: 7px 12px;
+      gap: 7px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      border-bottom: 1px solid rgba(201,168,92,0.18);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    }
+    .mob-nav::-webkit-scrollbar { display: none; }
+    .mob-nav a {
+      flex-shrink: 0;
+      padding: 5px 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(201,168,92,0.35);
+      color: rgba(255,255,255,0.82);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
+    }
+    .mob-nav a:hover,
+    .mob-nav a.mob-active {
+      background: rgba(201,168,92,0.18);
+      color: #c9a85c;
+      border-color: #c9a85c;
+    }
+    .mob-nav a.mob-cta {
+      background: #c9a85c;
+      color: #1a3472 !important;
+      border-color: #c9a85c;
+      font-weight: 700;
+    }
+  }
+
   </style>
 </head>
 <body>
@@ -645,6 +697,14 @@
     <a href="index.html#contact" class="cis-nav-cta">免費諮詢</a>
   </div>
 </nav>
+<div class="mob-nav" aria-label="行動裝置導覽">
+  <a href="index.html">首頁</a>
+  <a href="benefits.html">包租代管好處</a>
+  <a href="tax-savings.html">節稅攻略</a>
+  <a href="#calculator">開始試算</a>
+  <a href="index.html#contact" class="mob-cta">免費諮詢</a>
+</div>
+
 <main class="page">
     <section class="hero">
       <div class="container">
