@@ -328,15 +328,56 @@
   }
 
   /* ─── RESPONSIVE ─── */
+  .swipe-hint {
+    display: none;
+    font-size: 0.78rem;
+    color: var(--gold);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+
   @media (max-width: 768px) {
     .navbar { padding: 12px 20px; }
     .nav-logo { height: 42px; }
     .nav-links a:not(.nav-cta) { display: none; }
     .hero { padding: 152px 24px 70px; }
-    .benefits-grid { grid-template-columns: 1fr; }
-    .savings-intro { grid-template-columns: 1fr; }
+    /* 三大優惠卡片：手機橫向滑動，每張固定寬度 */
+    .benefits-grid {
+      display: flex;
+      flex-direction: row;
+      overflow-x: auto;
+      gap: 14px;
+      padding-bottom: 16px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .benefits-grid::-webkit-scrollbar { height: 4px; }
+    .benefits-grid::-webkit-scrollbar-track { background: var(--cream-dark); border-radius: 2px; }
+    .benefits-grid::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+    .benefit-card {
+      min-width: 78vw;
+      max-width: 300px;
+      flex-shrink: 0;
+      scroll-snap-align: start;
+    }
+    /* 省稅案例：手機橫向滑動 */
+    .savings-intro {
+      display: flex;
+      flex-direction: row;
+      overflow-x: auto;
+      gap: 12px;
+      padding-bottom: 12px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .saving-highlight {
+      min-width: 72vw;
+      flex-shrink: 0;
+      scroll-snap-align: start;
+    }
     .process-steps { grid-template-columns: 1fr 1fr; gap: 28px; }
     .process-steps::before { display: none; }
+    .swipe-hint { display: block; }
     .infographic-section, .benefits-section, .table-section,
     .qa-section, .process-section, .cta-section { padding: 60px 24px; }
     .gold-strip { padding: 18px 24px; }
@@ -494,6 +535,7 @@
     <div class="section-label">三大稅賦優惠</div>
     <h2 class="section-title">這三種稅，你都可以少繳</h2>
     <p class="section-desc">成為公益出租人後，以下三種稅都有明顯優惠，而且三項可以同時享有。</p>
+    <p class="swipe-hint">← 左右滑動查看</p>
     <div class="benefits-grid">
 
       <div class="benefit-card">
@@ -555,6 +597,7 @@
     <h2 class="section-title">真的省很多嗎？看看這些實際案例</h2>
     <p class="section-desc">以下數字來自內政部官方試算，各縣市房東每年可省下的稅金（同時計算三稅後的差額）。</p>
 
+    <p class="swipe-hint">← 左右滑動查看</p>
     <div class="savings-intro">
       <div class="saving-highlight">
         <div class="saving-location">台北市信義區（月租3萬，約29坪公寓）</div>
