@@ -589,7 +589,7 @@
           這種情況通常是<strong>房東對申請補貼的流程不熟悉、擔心影響報稅</strong>，而不是刻意刁難。只要跟房東說明清楚，大多數都能順利解決。<br><br>
           <strong>建議做法：</strong>主動告知房東，申請補貼後房東會自動成為「公益出租人」，享有所得稅每月 15,000 元免稅，以及房屋稅、地價稅的優惠稅率——申請對房東其實是好事。<br><br>
           若租約合法登記，租金補貼的申請資料依法<strong>不作為查稅依據</strong>，房東不會因此被稅務機關追查。
-          <div class="qa-alert">💡 選擇透過禾大屋管代管的物件，房東均熟悉公益出租人制度，房客申請補貼完全無障礙。</div>
+          <div class="qa-alert">💡 已向禾大屋管承租的房客，若有申請租金補貼的疑問，歡迎向我們詢問所租物件的相關條件與申請方向。</div>
         </div></div>
       </div>
 
@@ -662,13 +662,186 @@
   </div>
 </section>
 
+<!-- ══ CALCULATOR ══ -->
+<section class="sec" id="calculator" style="background:#eef4f0;">
+  <div class="sec-inner">
+    <div class="sec-label" style="color:var(--green-mid);">補貼試算</div>
+    <h2 class="sec-title" style="color:var(--green-deep);">我每月能領多少租金補貼？</h2>
+    <p class="sec-desc" style="color:var(--text-soft);">依據您的條件逐步選擇，即時估算每月可能領取金額。結果僅供參考，實際以主管機關核定為準。</p>
+
+    <style>
+      .tc-wrap{max-width:780px;margin:0 auto;}
+      .tc-step{background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:16px;box-shadow:0 2px 12px rgba(27,58,45,0.07);border:1px solid var(--cream-dark);}
+      .tc-step-label{font-family:'Noto Serif TC',serif;font-size:.8rem;font-weight:700;color:var(--green-light);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;}
+      .tc-step-q{font-size:1rem;font-weight:600;color:var(--green-deep);margin-bottom:16px;line-height:1.5;}
+      .tc-opts{display:flex;flex-wrap:wrap;gap:10px;}
+      .tc-opt{cursor:pointer;}
+      .tc-opt input{display:none;}
+      .tc-opt span{display:block;padding:10px 20px;border-radius:8px;border:2px solid var(--cream-dark);background:var(--cream);color:var(--text-mid);font-size:.88rem;font-weight:500;transition:all .2s;white-space:nowrap;}
+      .tc-opt input:checked + span{border-color:var(--green-mid);background:var(--green-deep);color:#fff;}
+      .tc-opt span:hover{border-color:var(--green-light);background:#e6f0eb;}
+      .tc-hint{margin-top:12px;font-size:.78rem;color:var(--text-soft);line-height:1.7;background:var(--cream);padding:10px 14px;border-radius:8px;border-left:3px solid var(--gold);}
+      .tc-result{background:var(--green-deep);border-radius:16px;padding:36px 32px;margin-top:8px;text-align:center;display:none;}
+      .tc-result.show{display:block;}
+      .tc-result-label{font-size:.78rem;color:rgba(255,255,255,.5);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+      .tc-result-amount{font-family:'DM Serif Display',serif;font-size:clamp(2.4rem,6vw,3.8rem);color:var(--gold);line-height:1;margin-bottom:6px;}
+      .tc-result-unit{font-size:.88rem;color:rgba(255,255,255,.6);margin-bottom:24px;}
+      .tc-result-annual{font-size:1.05rem;color:rgba(255,255,255,.85);margin-bottom:20px;}
+      .tc-result-annual strong{color:var(--gold);}
+      .tc-result-detail{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-bottom:24px;}
+      .tc-tag{background:rgba(255,255,255,.1);border:1px solid rgba(201,168,92,.3);border-radius:20px;padding:6px 16px;font-size:.78rem;color:rgba(255,255,255,.75);}
+      .tc-ineligible{background:#fff3e0;border-radius:16px;padding:36px 32px;margin-top:8px;text-align:center;display:none;border:2px solid #ffcc80;}
+      .tc-ineligible.show{display:block;}
+      .tc-ineligible-icon{font-size:2.5rem;margin-bottom:12px;}
+      .tc-ineligible-msg{font-size:1rem;color:#e65100;font-weight:600;margin-bottom:8px;}
+      .tc-ineligible-sub{font-size:.84rem;color:#bf360c;line-height:1.7;}
+      .tc-disclaimer{margin-top:20px;font-size:.72rem;color:rgba(255,255,255,.35);line-height:1.8;text-align:center;}
+      .tc-age-step{transition:opacity .3s;}
+      @media(max-width:600px){.tc-step{padding:20px 18px;}.tc-opts{gap:8px;}.tc-opt span{padding:9px 14px;font-size:.82rem;}.tc-result,.tc-ineligible{padding:28px 20px;}}
+    </style>
+
+    <div class="tc-wrap">
+      <!-- Step 1 -->
+      <div class="tc-step">
+        <div class="tc-step-label">步驟 1 / 5</div>
+        <div class="tc-step-q">租屋地點在哪裡？</div>
+        <div class="tc-opts">
+          <label class="tc-opt"><input type="radio" name="tc_city" value="taipei" checked onchange="tcCalc()"><span>台北市</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_city" value="ntpc" onchange="tcCalc()"><span>新北市</span></label>
+        </div>
+        <div class="tc-hint" id="tc-income-hint">台北市所得上限：每人每月 50,948 元；新北市：42,250 元</div>
+      </div>
+      <!-- Step 2 -->
+      <div class="tc-step">
+        <div class="tc-step-label">步驟 2 / 5</div>
+        <div class="tc-step-q">家庭成員人數（含申請人）</div>
+        <div class="tc-opts">
+          <label class="tc-opt"><input type="radio" name="tc_members" value="1" checked onchange="tcCalc()"><span>1 人（單身）</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_members" value="2" onchange="tcCalc()"><span>2 人</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_members" value="3" onchange="tcCalc()"><span>3 人以上</span></label>
+        </div>
+      </div>
+      <!-- Step 3 -->
+      <div class="tc-step">
+        <div class="tc-step-label">步驟 3 / 5</div>
+        <div class="tc-step-q">是否具有弱勢身分？</div>
+        <div class="tc-opts">
+          <label class="tc-opt"><input type="radio" name="tc_welfare" value="none" checked onchange="tcCalc()"><span>無</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_welfare" value="low" onchange="tcCalc()"><span>低收入戶</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_welfare" value="midlow" onchange="tcCalc()"><span>中低收入戶</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_welfare" value="other" onchange="tcCalc()"><span>其他弱勢（身心障礙 / 特殊境遇）</span></label>
+        </div>
+      </div>
+      <!-- Step 4 (年齡，單身時才有意義) -->
+      <div class="tc-step tc-age-step" id="tc-age-step">
+        <div class="tc-step-label">步驟 4 / 5</div>
+        <div class="tc-step-q">申請人年齡</div>
+        <div class="tc-opts">
+          <label class="tc-opt"><input type="radio" name="tc_age" value="young" checked onchange="tcCalc()"><span>未滿 40 歲</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_age" value="old" onchange="tcCalc()"><span>40 歲以上</span></label>
+        </div>
+        <div class="tc-hint">單身申請人年齡影響補貼等級：40 歲以上單身適用較高的第二級補貼。</div>
+      </div>
+      <!-- Step 5 -->
+      <div class="tc-step">
+        <div class="tc-step-label">步驟 5 / 5</div>
+        <div class="tc-step-q">婚育狀況</div>
+        <div class="tc-opts">
+          <label class="tc-opt"><input type="radio" name="tc_family" value="none" checked onchange="tcCalc()"><span>未婚未育</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_family" value="child" onchange="tcCalc()"><span>育有未成年子女</span></label>
+          <label class="tc-opt"><input type="radio" name="tc_family" value="newwed" onchange="tcCalc()"><span>新婚且育有子女</span></label>
+        </div>
+      </div>
+      <!-- Result -->
+      <div class="tc-result" id="tc-result">
+        <div class="tc-result-label">預估每月補貼金額</div>
+        <div class="tc-result-amount" id="tc-amount">—</div>
+        <div class="tc-result-unit">元 ／ 月</div>
+        <div class="tc-result-annual" id="tc-annual"></div>
+        <div class="tc-result-detail" id="tc-tags"></div>
+        <div class="tc-disclaimer">※ 新北市基本額為參考估算值，實際金額以主管機關核定為準。<br>補貼金額上限 14,400 元／月，且不得高於實際租金。<br>加碼倍數取最高項，不重疊累加。</div>
+      </div>
+      <div class="tc-ineligible" id="tc-ineligible">
+        <div class="tc-ineligible-icon">⚠️</div>
+        <div class="tc-ineligible-msg" id="tc-inelig-msg">依目前選擇條件，可能不符合申請資格</div>
+        <div class="tc-ineligible-sub" id="tc-inelig-sub"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  var BASE = {
+    taipei: {1: 8000, 2: 5000, 3: 3000},
+    ntpc:   {1: 6000, 2: 4000, 3: 2500}
+  };
+  var INCOME_LIMIT = {taipei: 50948, ntpc: 42250};
+  var LEVEL_NAME = {1:'第一級（優先弱勢）', 2:'第二級（一般家庭）', 3:'第三級（一般單身）'};
+
+  function get(name){ return document.querySelector('[name="'+name+'"]:checked').value; }
+  function fmt(n){ return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+
+  window.tcCalc = function(){
+    var city    = get('tc_city');
+    var members = parseInt(get('tc_members'));
+    var welfare = get('tc_welfare');
+    var age     = get('tc_age');
+    var family  = get('tc_family');
+
+    // 顯示/隱藏年齡步驟（多人家庭時年齡影響較小，但仍顯示供參考）
+    var ageHint = document.getElementById('tc-income-hint');
+    ageHint.textContent = '台北市所得上限：每人每月 '+fmt(INCOME_LIMIT[city])+' 元；新北市：'+fmt(INCOME_LIMIT['ntpc'])+' 元';
+
+    var res  = document.getElementById('tc-result');
+    var inelig = document.getElementById('tc-ineligible');
+
+    // 判斷等級
+    var level;
+    if      (members >= 2 && welfare === 'low')    level = 1;
+    else if (members >= 3 && welfare === 'midlow') level = 1;
+    else if (members >= 2)                         level = 2;
+    else if (age === 'old' || welfare !== 'none')  level = 2;
+    else                                           level = 3;
+
+    // 基本金額
+    var base = BASE[city][level];
+
+    // 加碼倍數（擇高）
+    var mult = 1.2;
+    if (welfare === 'low' || welfare === 'midlow' || welfare === 'other') mult = Math.max(mult, 1.4);
+    if (family === 'child')  mult = Math.max(mult, 1.6);
+    if (family === 'newwed') mult = Math.max(mult, 1.8);
+
+    var final = Math.min(Math.round(base * mult), 14400);
+    var annual = final * 12;
+
+    // 顯示結果
+    res.classList.add('show');
+    inelig.classList.remove('show');
+    document.getElementById('tc-amount').textContent = fmt(final);
+    document.getElementById('tc-annual').innerHTML = '全年估算補貼：<strong>'+fmt(annual)+' 元</strong>';
+
+    var tags = [
+      LEVEL_NAME[level],
+      (city==='taipei'?'台北市':'新北市')+' 基本額 '+fmt(base)+' 元',
+      '加碼 ×'+mult,
+    ];
+    if(city==='ntpc') tags.push('新北市採估算值');
+    document.getElementById('tc-tags').innerHTML = tags.map(function(t){return '<span class="tc-tag">'+t+'</span>';}).join('');
+  };
+
+  // 初始化
+  document.addEventListener('DOMContentLoaded', function(){ window.tcCalc(); });
+})();
+</script>
 <!-- ══ CTA ══ -->
 <section class="cta-section" id="contact">
   <div class="cta-inner">
     <div class="cta-label">禾大屋管協助</div>
     <h2 class="cta-title">透過禾大屋管租屋<br>補貼申請更順暢</h2>
     <p class="cta-desc">
-      禾大屋管管理的物件，房東均為合法出租、稅務完整，租客申請租金補貼無障礙。我們熟悉申請流程，可協助說明資格、確認文件、溝通房東，讓你安心租到好房子。
+      已向禾大屋管承租的房客，歡迎向我們詢問所租物件是否符合租金補貼申請條件。我們可協助說明申請流程與所需文件，並協調溝通相關事宜，提供您初步的方向參考。實際申請資格與補貼結果，仍以主管機關核定為準，禾大屋管不對申請結果負擔任何保證責任。
     </p>
     <div class="cta-btns">
       <a href="./index.html#contact" class="btn-primary">聯絡禾大屋管</a>
