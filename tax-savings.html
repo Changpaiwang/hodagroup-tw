@@ -438,10 +438,15 @@
     document.getElementById('pw-overlay').style.display='none';
   }
 })();
-function checkPW(){
+async function checkPW(){
   var val=document.getElementById('pw-input').value;
   var err=document.getElementById('pw-error');
-  if(val==='1688'){
+  var encoder=new TextEncoder();
+  var data=encoder.encode(val);
+  var hashBuffer=await crypto.subtle.digest('SHA-256',data);
+  var hashArray=Array.from(new Uint8Array(hashBuffer));
+  var hashHex=hashArray.map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+  if(hashHex==='adb736c83f5cec1d6a275694c25b544137ab4d4c760c4dadf89523c4167d619a'){
     sessionStorage.setItem('hoda_tax_auth','ok');
     var el=document.getElementById('pw-overlay');
     el.style.opacity='0';
