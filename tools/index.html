@@ -435,6 +435,9 @@ function renderDashboard() {
           </div>
           <div style="font-size:11px;color:var(--hint)">每筆送出資料將記錄至禾大屋管後台試算表</div>
         </div>
+        <a href="https://hodagroup.tw" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;border:1.5px solid #d1d5db;background:white;color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;margin-bottom:8px">
+          <i class="ti ti-world" style="font-size:16px"></i>回禾大官網
+        </a>
       </div>
     </div>`);
   document.getElementById("logout-btn").addEventListener("click", () => { session.loggedIn=false; session.user=""; renderLogin(); });
