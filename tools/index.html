@@ -224,6 +224,24 @@ textarea { resize: none; height: 68px; line-height: 1.5; }
 .warn-item { background: #ffebee; border-left: 3px solid #c62828; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #b71c1c; margin-bottom: 8px; }
 .print-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1.5px solid #d1d5db; background: white; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
 @media print { .header, .logout-btn, .nav-row, .print-btn, .btn-primary, .btn-secondary, .dashboard-hero { display: none !important; } }
+
+/* ======== HISTORY ======== */
+.tool-icon-3 { background: #f3e8ff; color: #7e22ce; }
+.hist-tabs { display:flex; gap:8px; margin-bottom:14px; }
+.hist-tab { flex:1; padding:10px; border-radius:10px; border:1.5px solid #e5e7eb; background:white; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; transition:all 0.15s; }
+.hist-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
+.hist-item { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:all 0.15s; }
+.hist-item:active { transform:scale(0.98); }
+.hist-item-addr { font-size:14px; font-weight:700; color:var(--navy); margin-bottom:4px; }
+.hist-item-meta { font-size:12px; color:var(--muted); }
+.hist-chip { font-size:11px; padding:3px 9px; border-radius:20px; font-weight:700; }
+.hist-loading { text-align:center; padding:40px; color:var(--muted); font-size:14px; line-height:2; }
+.hist-empty { text-align:center; padding:40px 20px; color:var(--hint); font-size:14px; line-height:2; }
+.detail-row { display:flex; justify-content:space-between; align-items:flex-start; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; }
+.detail-row:last-child { border-bottom:none; }
+.detail-key { color:var(--muted); flex-shrink:0; margin-right:12px; }
+.detail-val { text-align:right; font-weight:500; color:#1a1a1a; word-break:break-all; }
+.edit-banner { background:#f3e8ff; border:1px solid #d8b4fe; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#7e22ce; display:flex; align-items:center; gap:8px; }
 </style>
 </head>
 <body>
@@ -286,6 +304,7 @@ const SC_SECTIONS = [
 ];
 const SC_MAX = SC_SECTIONS.reduce((a,s)=>a+s.maxScore,0);
 let scState = { step:0, info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""}, answers:{}, note:"", submitted:false };
+let histState = { tab:"checklist", rows:[], selectedRow:null };
 
 /* ─── 路由 ─── */
 let currentView = "login"; // login | dashboard | checklist | scoring
@@ -330,6 +349,208 @@ async function postToSheets(type, data) {
     });
     return true;
   } catch(e) { return false; }
+}
+
+async function fetchFromSheets(sheet) {
+  if (CONFIG.SCRIPT_URL === "YOUR_APPS_SCRIPT_URL_HERE") return [];
+  try {
+    const res = await fetch(`${CONFIG.SCRIPT_URL}?action=list&sheet=${sheet}`);
+    const json = await res.json();
+    return json.rows || [];
+  } catch(e) { return []; }
+}
+
+/* ─── HISTORY ─── */
+function renderHistory() {
+  currentView = "history";
+  histState.selectedRow = null;
+  renderHistList();
+}
+
+async function renderHistList() {
+  const tab = histState.tab;
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="hist-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">查詢 / 補正記錄</div>
+      <div class="header-sub">點選記錄可補正資料</div>
+      <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+    <div class="page">
+      <div class="hist-tabs">
+        <button class="hist-tab ${tab==='checklist'?'active':''}" data-tab="checklist"><i class="ti ti-clipboard-check" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>勘查清單</button>
+        <button class="hist-tab ${tab==='scoring'?'active':''}" data-tab="scoring"><i class="ti ti-star" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>評分記錄</button>
+      </div>
+      <div id="hist-list"><div class="hist-loading"><i class="ti ti-loader" style="font-size:28px;display:block;margin-bottom:10px"></i>資料載入中...</div></div>
+    </div>`);
+  app.querySelector("#hist-home-btn").addEventListener("click", renderDashboard);
+  app.querySelectorAll(".hist-tab").forEach(el => el.addEventListener("click", () => {
+    histState.tab = el.dataset.tab;
+    renderHistList();
+  }));
+  const rows = await fetchFromSheets(tab);
+  histState.rows = rows;
+  const listEl = document.getElementById("hist-list");
+  if (!listEl) return;
+  if (CONFIG.SCRIPT_URL === "YOUR_APPS_SCRIPT_URL_HERE") {
+    listEl.innerHTML = `<div class="hist-empty"><i class="ti ti-plug-off" style="font-size:36px;display:block;margin-bottom:12px"></i>尚未連線至 Google Sheets<br>請先填入 Apps Script URL</div>`;
+    return;
+  }
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="hist-empty"><i class="ti ti-database-off" style="font-size:36px;display:block;margin-bottom:12px"></i>目前尚無記錄<br>請先填寫${tab==='checklist'?'勘查清單':'評分表'}</div>`;
+    return;
+  }
+  listEl.innerHTML = rows.map((row, idx) => {
+    if (tab === 'checklist') {
+      const pctStr = row['整體完成度 (%)'] || '0%';
+      const pct = parseInt(pctStr) || 0;
+      const bg = pct===100?'#e8f5e9':pct>=70?'#fff8e1':'#ffebee';
+      const fg = pct===100?'#2e7d32':pct>=70?'#e65100':'#c62828';
+      const timeStr = (row['送出時間']||'').toString().substring(0,10);
+      return `<div class="hist-item" data-idx="${idx}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+          <div class="hist-item-addr">${row['物件地址']||'(地址未填)'}</div>
+          <span class="hist-chip" style="background:${bg};color:${fg};flex-shrink:0;margin-left:8px">${pctStr}</span>
+        </div>
+        <div class="hist-item-meta">${row['業務姓名']||'—'} · ${row['屋主姓名']||'—'} · ${row['勘查日期']||'—'}</div>
+        <div class="hist-item-meta" style="margin-top:2px;color:var(--hint)">${timeStr}</div>
+      </div>`;
+    } else {
+      const score = parseInt(row['總分']) || 0;
+      const bg = score>=90?'#e8f5e9':score>=85?'#e3f2fd':score>=80?'#fff8e1':score>=70?'#fbe9e7':'#ffebee';
+      const fg = score>=90?'#2e7d32':score>=85?'#1565c0':score>=80?'#e65100':score>=70?'#bf360c':'#c62828';
+      const timeStr = (row['送出時間']||'').toString().substring(0,10);
+      return `<div class="hist-item" data-idx="${idx}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+          <div class="hist-item-addr">${row['物件地址']||'(地址未填)'}</div>
+          <span class="hist-chip" style="background:${bg};color:${fg};flex-shrink:0;margin-left:8px">${score}分</span>
+        </div>
+        <div class="hist-item-meta">${row['業務姓名']||'—'} · ${row['屋主聯絡']||'—'} · ${row['評估日期']||'—'}</div>
+        <div class="hist-item-meta" style="margin-top:2px;color:var(--hint)">${timeStr} ${row['承接建議']?'· '+row['承接建議']:''}</div>
+      </div>`;
+    }
+  }).join('');
+  listEl.querySelectorAll(".hist-item").forEach(el => el.addEventListener("click", () => {
+    renderHistDetail(histState.rows[parseInt(el.dataset.idx)], histState.tab);
+  }));
+}
+
+function renderHistDetail(row, type) {
+  histState.selectedRow = row;
+  if (type === 'checklist') {
+    const pctStr = row['整體完成度 (%)'] || '0%';
+    const pct = parseInt(pctStr) || 0;
+    const bg = pct===100?'#e8f5e9':pct>=70?'#fff8e1':'#ffebee';
+    const fg = pct===100?'#2e7d32':pct>=70?'#e65100':'#c62828';
+    setHTML(`
+      <div class="header" style="position:relative">
+        <button class="logout-btn" id="hd-back-btn"><i class="ti ti-arrow-left" style="font-size:13px"></i>返回</button>
+        <div class="header-badge">勘查清單記錄</div>
+        <div class="header-title">${row['物件地址']||'物件地址'}</div>
+        <div class="header-sub">${row['業務姓名']||''} · ${row['勘查日期']||''}</div>
+        <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+      </div>
+      <div class="page">
+        <div class="card" style="text-align:center;padding:16px">
+          <div style="font-size:36px;font-weight:900;color:${fg}">${pctStr}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">整體完成度</div>
+          <div style="height:6px;background:#f3f4f6;border-radius:3px;margin-top:10px"><div style="height:100%;width:${pctStr};background:${fg};border-radius:3px"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-user-circle"></i>基本資料</div>
+          ${[['業務姓名','業務姓名'],['屋主姓名','屋主姓名'],['聯絡電話','聯絡電話'],['LINE ID','LINE ID'],['物件地址','物件地址'],['勘查日期','勘查日期']].map(([k,l])=>`<div class="detail-row"><span class="detail-key">${l}</span><span class="detail-val">${row[k]||'—'}</span></div>`).join('')}
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-writing"></i>代管條件</div>
+          ${[['管理方式','管理方式'],['期待月租 (NT$)','期待月租'],['小額修繕授權 (NT$)','修繕授權'],['合約年限','合約年限']].map(([k,l])=>`<div class="detail-row"><span class="detail-key">${l}</span><span class="detail-val">${row[k]||'—'}</span></div>`).join('')}
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-building"></i>房屋資料</div>
+          ${[['建物型態','建物型態'],['坪數','坪數'],['格局','格局'],['樓層','樓層'],['電表狀況','電表'],['水表狀況','水表'],['管理費','管理費'],['近一年修繕支出','近一年修繕']].map(([k,l])=>`<div class="detail-row"><span class="detail-key">${l}</span><span class="detail-val">${row[k]||'—'}</span></div>`).join('')}
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-users"></i>出租狀況</div>
+          ${[['有無租客','有無租客'],['每月租金','每月租金'],['押金','押金'],['漏水壁癌','漏水壁癌'],['最近維修','最近維修'],['鑰匙數量','鑰匙'],['門禁卡數量','門禁卡']].map(([k,l])=>`<div class="detail-row"><span class="detail-key">${l}</span><span class="detail-val">${row[k]||'—'}</span></div>`).join('')}
+        </div>
+        ${row['各區備注']?`<div class="card"><div class="card-title"><i class="ti ti-note"></i>現場備注</div><div style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap">${row['各區備注']}</div></div>`:''}
+        <button class="btn-primary" id="hd-edit-btn" style="margin-bottom:10px"><i class="ti ti-edit" style="font-size:17px"></i>補正 / 編輯此記錄</button>
+        <button class="btn-secondary" id="hd-back2-btn" style="width:100%"><i class="ti ti-arrow-left" style="font-size:15px"></i>返回列表</button>
+      </div>`);
+  } else {
+    const score = parseInt(row['總分']) || 0;
+    const bg = score>=90?'#e8f5e9':score>=85?'#e3f2fd':score>=80?'#fff8e1':score>=70?'#fbe9e7':'#ffebee';
+    const fg = score>=90?'#2e7d32':score>=85?'#1565c0':score>=80?'#e65100':score>=70?'#bf360c':'#c62828';
+    setHTML(`
+      <div class="header" style="position:relative">
+        <button class="logout-btn" id="hd-back-btn"><i class="ti ti-arrow-left" style="font-size:13px"></i>返回</button>
+        <div class="header-badge">評分記錄</div>
+        <div class="header-title">${row['物件地址']||'物件地址'}</div>
+        <div class="header-sub">${row['業務姓名']||''} · ${row['評估日期']||''}</div>
+        <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+      </div>
+      <div class="page">
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:48px;font-weight:900;color:${fg};line-height:1">${score}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">/ ${row['最高分']||100} 分</div>
+          <div style="margin-top:12px;padding:10px 16px;border-radius:10px;background:${bg};font-size:15px;font-weight:800;color:${fg}">${row['承接建議']||'—'}</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-file-description"></i>基本資料</div>
+          ${[['業務姓名','業務姓名'],['物件地址','物件地址'],['屋主聯絡','屋主聯絡'],['評估日期','評估日期']].map(([k,l])=>`<div class="detail-row"><span class="detail-key">${l}</span><span class="detail-val">${row[k]||'—'}</span></div>`).join('')}
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-chart-bar"></i>各項分數</div>
+          ${[['地段交通 (/20)','地段交通'],['屋況設備 (/20)','屋況設備'],['租金市場 (/20)','租金市場'],['屋主配合 (/20)','屋主配合'],['現有風險 (/10)','現有風險'],['財務預估 (/10)','財務預估']].map(([k,l])=>`<div class="detail-row"><span class="detail-key">${l}</span><span class="detail-val">${row[k]||'—'}</span></div>`).join('')}
+        </div>
+        ${row['業務備注']?`<div class="card"><div class="card-title"><i class="ti ti-note"></i>業務備注</div><div style="font-size:13px;color:#374151">${row['業務備注']}</div></div>`:''}
+        <button class="btn-primary" id="hd-edit-btn" style="margin-bottom:10px"><i class="ti ti-edit" style="font-size:17px"></i>補正 / 編輯此記錄</button>
+        <button class="btn-secondary" id="hd-back2-btn" style="width:100%"><i class="ti ti-arrow-left" style="font-size:15px"></i>返回列表</button>
+      </div>`);
+  }
+  app.querySelector("#hd-back-btn").addEventListener("click", renderHistList);
+  app.querySelector("#hd-back2-btn").addEventListener("click", renderHistList);
+  app.querySelector("#hd-edit-btn").addEventListener("click", () => {
+    if (type === 'checklist') prefillChecklistFromRow(row);
+    else prefillScoringFromRow(row);
+  });
+}
+
+function prefillChecklistFromRow(row) {
+  clState = {
+    step: 0,
+    landlord: {
+      name: row['屋主姓名']||'', phone: row['聯絡電話']||'', line: row['LINE ID']||'',
+      address: row['物件地址']||'', date: row['勘查日期']||new Date().toISOString().slice(0,10),
+    },
+    checks: {},
+    fields: {
+      mgmtType: row['管理方式']||'', expectedRent: row['期待月租 (NT$)']||'',
+      repairLimit: row['小額修繕授權 (NT$)']||'', contractYears: row['合約年限']||'',
+      buildingType: row['建物型態']||'', area: row['坪數']||'', layout: row['格局']||'', floor: row['樓層']||'',
+      electricMeter: row['電表狀況']||'', waterMeter: row['水表狀況']||'',
+      mgmtFee: row['管理費']||'', repairCost: row['近一年修繕支出']||'',
+      hasTenants: row['有無租客']||'', monthlyRent: row['每月租金']||'', deposit: row['押金']||'',
+      leakStatus: row['漏水壁癌']||'', lastRepair: row['最近維修']||'',
+      keyCount: row['鑰匙數量']||'', cardCount: row['門禁卡數量']||'',
+    },
+    notes: {}, submitted: false,
+    editRowIndex: row._rowIndex,
+  };
+  renderCL();
+}
+
+function prefillScoringFromRow(row) {
+  scState = {
+    step: 0,
+    info: {
+      address: row['物件地址']||'', appraiser: row['業務姓名']||session.user,
+      date: row['評估日期']||new Date().toISOString().slice(0,10), contact: row['屋主聯絡']||'',
+    },
+    answers: {}, note: row['業務備注']||'', submitted: false,
+    editRowIndex: row._rowIndex,
+  };
+  renderSC();
 }
 
 /* ─── LOGIN ─── */
@@ -427,6 +648,20 @@ function renderDashboard() {
             <span class="tool-tag tag-green">存入 Sheets</span>
           </div>
         </div>
+        <div class="tool-card" id="go-history">
+          <div class="tool-card-header">
+            <div class="tool-icon tool-icon-3"><i class="ti ti-history" style="font-size:26px"></i></div>
+            <div style="flex:1">
+              <div class="tool-card-title">查詢 / 補正記錄</div>
+              <div class="tool-card-desc">查看過去填寫的勘查清單或評分記錄，可補正修改資料</div>
+            </div>
+            <i class="ti ti-chevron-right tool-card-arrow"></i>
+          </div>
+          <div class="tool-card-footer">
+            <span class="tool-tag" style="background:#f3e8ff;color:#7e22ce">查詢記錄</span>
+            <span class="tool-tag" style="background:#f3e8ff;color:#7e22ce">補正編輯</span>
+          </div>
+        </div>
         <div class="db-card">
           <div class="db-card-title"><i class="ti ti-database" style="font-size:16px"></i>Google Sheets 資料庫</div>
           <div class="db-status">
@@ -443,6 +678,7 @@ function renderDashboard() {
   document.getElementById("logout-btn").addEventListener("click", () => { session.loggedIn=false; session.user=""; renderLogin(); });
   document.getElementById("go-checklist").addEventListener("click", () => { clState={step:0,landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)},checks:{},fields:{},notes:{},submitted:false}; renderCL(); });
   document.getElementById("go-scoring").addEventListener("click", () => { scState={step:0,info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""},answers:{},note:"",submitted:false}; renderSC(); });
+  document.getElementById("go-history").addEventListener("click", () => { histState.tab="checklist"; histState.rows=[]; histState.selectedRow=null; renderHistory(); });
 }
 
 /* ════════════════════════════════
@@ -555,9 +791,10 @@ function renderCLReview() {
         <div style="font-size:13px;color:var(--muted);margin-top:4px">共 ${tt} 項，已確認 ${tc} 項</div>
         <div style="height:7px;background:#f3f4f6;border-radius:4px;margin-top:12px"><div style="height:100%;width:${pct}%;background:${pct>=80?'var(--gold)':'var(--navy)'};border-radius:4px;transition:width .5s"></div></div>
       </div>
+      ${clState.editRowIndex?`<div class="edit-banner"><i class="ti ti-edit" style="font-size:16px;flex-shrink:0"></i>補正模式：將覆蓋原始記錄</div>`:''}
       ${rows}
       <button class="btn-secondary" id="cl-back2" style="width:100%;margin-bottom:10px">返回修改</button>
-      <button class="btn-primary" id="cl-submit"><i class="ti ti-send" style="font-size:17px"></i>確認送出至 Google Sheets</button>
+      <button class="btn-primary" id="cl-submit"><i class="ti ti-send" style="font-size:17px"></i>${clState.editRowIndex?'更新補正至 Google Sheets':'確認送出至 Google Sheets'}</button>
       <div style="font-size:11px;color:var(--hint);text-align:center;margin-top:8px">資料將儲存至禾大屋管房東資料庫</div>
     </div>`);
   app.querySelectorAll(".card[data-si]").forEach(el=>el.addEventListener("click",()=>{ clState.step=parseInt(el.dataset.si)+1; renderCL(); }));
@@ -565,21 +802,27 @@ function renderCLReview() {
   app.querySelector("#cl-home-btn2").addEventListener("click", renderDashboard);
   app.querySelector("#cl-submit").addEventListener("click", async()=>{
     const btn=app.querySelector("#cl-submit"); btn.disabled=true; btn.textContent="送出中...";
-    await postToSheets("checklist",{ landlord:clState.landlord, fields:clState.fields, sections:CL_SECTIONS.map((s,i)=>({title:s.title,items:s.items.map((item,j)=>({item,checked:!!clState.checks[`${i}-${j}`]})),notes:clState.notes[i]||""})), appraiser:session.user, submittedAt:new Date().toISOString() });
+    const clPostType = clState.editRowIndex ? "update_checklist" : "checklist";
+    await postToSheets(clPostType,{ landlord:clState.landlord, fields:clState.fields, sections:CL_SECTIONS.map((s,i)=>({title:s.title,items:s.items.map((item,j)=>({item,checked:!!clState.checks[`${i}-${j}`]})),notes:clState.notes[i]||""})), appraiser:session.user, submittedAt:new Date().toISOString(), _rowIndex:clState.editRowIndex||undefined });
     clState.submitted=true; renderCLDone();
   });
 }
 function renderCLDone() {
+  const isEdit = !!clState.editRowIndex;
   setHTML(`
-    <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">送出完成</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
+    <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">${isEdit?'補正完成':'送出完成'}</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
     <div class="page" style="padding-top:40px;text-align:center">
       <div style="width:80px;height:80px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px"><i class="ti ti-check" style="font-size:40px;color:#2e7d32"></i></div>
-      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">資料已送出！</div>
-      <div style="font-size:14px;color:var(--muted);line-height:1.8">${clState.landlord.name?'<strong>'+clState.landlord.name+'</strong> · ':''} ${clState.landlord.address||'物件'}<br>已記錄至 Google Sheets</div>
-      <button class="btn-primary" id="cl-new" style="margin-top:28px"><i class="ti ti-plus" style="font-size:17px"></i>新增下一筆</button>
+      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">${isEdit?'資料已更新！':'資料已送出！'}</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.8">${clState.landlord.name?'<strong>'+clState.landlord.name+'</strong> · ':''} ${clState.landlord.address||'物件'}<br>${isEdit?'補正內容已更新至 Google Sheets':'已記錄至 Google Sheets'}</div>
+      ${isEdit?`<button class="btn-primary" id="cl-hist" style="margin-top:28px"><i class="ti ti-history" style="font-size:17px"></i>回查詢記錄</button>`:`<button class="btn-primary" id="cl-new" style="margin-top:28px"><i class="ti ti-plus" style="font-size:17px"></i>新增下一筆</button>`}
       <button class="btn-secondary" id="cl-dash" style="width:100%;margin-top:10px"><i class="ti ti-home" style="font-size:15px"></i>回首頁</button>
     </div>`);
-  app.querySelector("#cl-new").addEventListener("click",()=>{ clState={step:0,landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)},checks:{},fields:{},notes:{},submitted:false}; renderCL(); });
+  if (isEdit) {
+    app.querySelector("#cl-hist").addEventListener("click", renderHistList);
+  } else {
+    app.querySelector("#cl-new").addEventListener("click",()=>{ clState={step:0,landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)},checks:{},fields:{},notes:{},submitted:false}; renderCL(); });
+  }
   app.querySelector("#cl-dash").addEventListener("click", renderDashboard);
 }
 
@@ -707,8 +950,9 @@ function renderSCResult() {
         <strong style="color:#1a1a1a">評分人：</strong>${scState.info.appraiser||session.user} &nbsp; <strong style="color:#1a1a1a">日期：</strong>${scState.info.date||'—'}<br>
         <strong style="color:#1a1a1a">物件：</strong>${scState.info.address||'—'} &nbsp; <strong style="color:#1a1a1a">屋主：</strong>${scState.info.contact||'—'}
       </div>
+      ${scState.editRowIndex?`<div class="edit-banner"><i class="ti ti-edit" style="font-size:16px;flex-shrink:0"></i>補正模式：將覆蓋原始評分記錄</div>`:''}
       <button class="btn-secondary" id="sc-back2" style="width:100%;margin-bottom:10px">返回修改</button>
-      <button class="btn-primary" id="sc-submit"><i class="ti ti-send" style="font-size:17px"></i>送出評分至 Google Sheets</button>
+      <button class="btn-primary" id="sc-submit"><i class="ti ti-send" style="font-size:17px"></i>${scState.editRowIndex?'更新補正至 Google Sheets':'送出評分至 Google Sheets'}</button>
       <button class="print-btn" id="sc-print"><i class="ti ti-printer" style="font-size:16px"></i>列印 / 儲存 PDF</button>
     </div>`);
   const noteEl=app.querySelector("#sc-note");
@@ -718,21 +962,27 @@ function renderSCResult() {
   app.querySelector("#sc-print").addEventListener("click",()=>window.print());
   app.querySelector("#sc-submit").addEventListener("click", async()=>{
     const btn=app.querySelector("#sc-submit"); btn.disabled=true; btn.textContent="送出中...";
-    await postToSheets("scoring",{ info:scState.info, score, recommendation:rec, answers:scState.answers, sections:SC_SECTIONS.map((s,i)=>({title:s.title,score:scSecScore(i),maxScore:s.maxScore})), note:scState.note, appraiser:session.user, submittedAt:new Date().toISOString() });
+    const scPostType = scState.editRowIndex ? "update_scoring" : "scoring";
+    await postToSheets(scPostType,{ info:scState.info, score, recommendation:rec, answers:scState.answers, sections:SC_SECTIONS.map((s,i)=>({title:s.title,score:scSecScore(i),maxScore:s.maxScore})), note:scState.note, appraiser:session.user, submittedAt:new Date().toISOString(), _rowIndex:scState.editRowIndex||undefined });
     scState.submitted=true; renderSCDone();
   });
 }
 function renderSCDone() {
+  const isEdit = !!scState.editRowIndex;
   setHTML(`
-    <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">評分送出完成</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
+    <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">${isEdit?'評分補正完成':'評分送出完成'}</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
     <div class="page" style="padding-top:40px;text-align:center">
       <div style="width:80px;height:80px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px"><i class="ti ti-check" style="font-size:40px;color:#2e7d32"></i></div>
-      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">評分已送出！</div>
-      <div style="font-size:14px;color:var(--muted);line-height:1.8">${scState.info.address||'物件'} 評分結果<br>已記錄至 Google Sheets</div>
-      <button class="btn-primary" id="sc-new" style="margin-top:28px"><i class="ti ti-plus" style="font-size:17px"></i>新增下一筆評估</button>
+      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">${isEdit?'評分已更新！':'評分已送出！'}</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.8">${scState.info.address||'物件'} 評分結果<br>${isEdit?'補正內容已更新至 Google Sheets':'已記錄至 Google Sheets'}</div>
+      ${isEdit?`<button class="btn-primary" id="sc-hist" style="margin-top:28px"><i class="ti ti-history" style="font-size:17px"></i>回查詢記錄</button>`:`<button class="btn-primary" id="sc-new" style="margin-top:28px"><i class="ti ti-plus" style="font-size:17px"></i>新增下一筆評估</button>`}
       <button class="btn-secondary" id="sc-dash" style="width:100%;margin-top:10px"><i class="ti ti-home" style="font-size:15px"></i>回首頁</button>
     </div>`);
-  app.querySelector("#sc-new").addEventListener("click",()=>{ scState={step:0,info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""},answers:{},note:"",submitted:false}; renderSC(); });
+  if (isEdit) {
+    app.querySelector("#sc-hist").addEventListener("click", renderHistList);
+  } else {
+    app.querySelector("#sc-new").addEventListener("click",()=>{ scState={step:0,info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""},answers:{},note:"",submitted:false}; renderSC(); });
+  }
   app.querySelector("#sc-dash").addEventListener("click", renderDashboard);
 }
 
