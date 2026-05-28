@@ -345,7 +345,7 @@ async function postToSheets(type, data) {
     await fetch(CONFIG.SCRIPT_URL, {
       method: "POST", mode: "no-cors",
       body: JSON.stringify({ type, ...data }),
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "text/plain" }
     });
     return true;
   } catch(e) { return false; }
