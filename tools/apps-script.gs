@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════
 
 const NOTIFY_EMAIL    = "changpaiwang@gmail.com";
+const SPREADSHEET_ID  = "1HsnhjNh6cDtM7mBrHIiy0SAu7Il08WqtnL1pgkXYS8E";
 const SHEET_CHECKLIST = "勘查清單";
 const SHEET_SCORING   = "物件評分";
 const SHEET_LOG       = "操作記錄";
@@ -12,7 +13,7 @@ const SHEET_LOG       = "操作記錄";
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    const ss   = SpreadsheetApp.getActiveSpreadsheet();
+    const ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
     let isUpdate = false;
 
     if      (data.type === "checklist")        { saveChecklist(ss, data);   sendChecklistEmail(data, false); }
@@ -36,7 +37,7 @@ function doGet(e) {
 }
 
 function listRows(sheetType) {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   const name  = sheetType === "checklist" ? SHEET_CHECKLIST : SHEET_SCORING;
   const sheet = ss.getSheetByName(name);
   if (!sheet || sheet.getLastRow() < 2) return ContentService.createTextOutput(JSON.stringify({ rows: [] })).setMimeType(ContentService.MimeType.JSON);
