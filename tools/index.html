@@ -496,7 +496,7 @@ function renderCLSection(si) {
   const dots = CL_SECTIONS.map((_,i)=>`<div class="dot ${i<si?'dot-done':i===si?'dot-active':'dot-future'}" data-si="${i}"></div>`).join("");
   const items = sec.items.map((item,i)=>{
     const key=`${si}-${i}`, ck=!!clState.checks[key];
-    return `<div class="check-row" data-key="${key}"><div class="checkbox ${ck?'checked'}">${ck?'<i class="ti ti-check"></i>':''}</div><div class="check-label">${item}</div></div>`;
+    return `<div class="check-row" data-key="${key}"><div class="checkbox ${ck?'checked':''}">${ck?'<i class="ti ti-check"></i>':''}</div><div class="check-label">${item}</div></div>`;
   }).join("");
   const fields = (sec.fields||[]).map(f=>fieldHTML(f,clState.fields[f.key])).join("");
   const isLast = clState.step===CL_SECTIONS.length;
