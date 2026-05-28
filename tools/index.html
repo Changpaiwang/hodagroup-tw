@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>禾大屋管｜業務工具系統</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  background: #F0EDE8;
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+:root {
+  --navy: #1B3A5C;
+  --navy2: #2A5080;
+  --gold: #C9A84C;
+  --gold-light: #F5EDD4;
+  --card: #fff;
+  --border: rgba(0,0,0,0.09);
+  --muted: #6b7280;
+  --hint: #9ca3af;
+}
+#app { max-width: 480px; margin: 0 auto; padding-bottom: 40px; min-height: 100vh; }
+
+/* ======== LOGIN ======== */
+.login-wrap {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 32px 20px;
+  background: linear-gradient(160deg, #1B3A5C 0%, #2A5080 60%, #1B3A5C 100%);
+}
+.login-card {
+  width: 100%; max-width: 380px;
+  background: rgba(255,255,255,0.97);
+  border-radius: 20px;
+  padding: 36px 28px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.login-logo {
+  text-align: center; margin-bottom: 28px;
+}
+.login-logo-icon {
+  width: 64px; height: 64px; border-radius: 16px;
+  background: var(--navy); color: var(--gold);
+  font-size: 28px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+  letter-spacing: -1px;
+}
+.login-logo-title { font-size: 20px; font-weight: 800; color: var(--navy); }
+.login-logo-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.login-label { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.login-input {
+  width: 100%; font-size: 16px; font-family: inherit;
+  padding: 13px 16px; border-radius: 12px;
+  border: 2px solid #e5e7eb; background: #f9f9f9; color: #1a1a1a;
+  outline: none; transition: border 0.2s; letter-spacing: 2px;
+}
+.login-input:focus { border-color: var(--navy); background: white; }
+.login-btn {
+  width: 100%; padding: 14px; margin-top: 20px;
+  border-radius: 12px; background: var(--navy); color: white;
+  font-weight: 800; font-size: 16px; border: none; cursor: pointer;
+  font-family: inherit; transition: opacity 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.login-btn:active { opacity: 0.85; }
+.login-error {
+  margin-top: 12px; padding: 10px 14px;
+  background: #ffebee; border-radius: 10px;
+  font-size: 13px; color: #c62828; text-align: center; display: none;
+}
+.login-footer { font-size: 11px; color: var(--hint); text-align: center; margin-top: 20px; }
+
+/* ======== HEADER ======== */
+.header {
+  background: var(--navy); color: white;
+  padding: 18px 20px 16px; border-radius: 0 0 20px 20px;
+  margin-bottom: 16px;
+  position: sticky; top: 0; z-index: 10;
+}
+.header-badge { font-size: 10px; color: var(--gold); font-weight: 700; letter-spacing: 3px; margin-bottom: 5px; }
+.header-title { font-size: 18px; font-weight: 800; }
+.header-sub { font-size: 12px; opacity: 0.6; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progress-track { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin-top: 12px; }
+.progress-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.4s; }
+.header-score-chip {
+  position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.12); border: 1.5px solid rgba(201,168,76,0.6);
+  border-radius: 50px; padding: 4px 12px;
+  font-size: 13px; font-weight: 800; color: var(--gold);
+}
+.logout-btn {
+  position: absolute; right: 16px; top: 18px;
+  background: rgba(255,255,255,0.12); border: none;
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer;
+  display: flex; align-items: center; gap: 4px; font-family: inherit;
+}
+
+/* ======== DASHBOARD ======== */
+.dashboard-hero {
+  background: var(--navy); color: white;
+  padding: 32px 20px 28px; border-radius: 0 0 24px 24px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.dashboard-logo-badge { font-size: 10px; color: var(--gold); font-weight: 700; letter-spacing: 3px; margin-bottom: 6px; }
+.dashboard-title { font-size: 22px; font-weight: 900; }
+.dashboard-sub { font-size: 13px; opacity: 0.65; margin-top: 4px; }
+.dashboard-user {
+  margin-top: 16px; display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: rgba(255,255,255,0.1); border-radius: 10px;
+}
+.dashboard-user-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--gold); color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; flex-shrink: 0;
+}
+.dashboard-user-name { font-size: 14px; font-weight: 600; }
+.dashboard-user-role { font-size: 11px; opacity: 0.7; }
+
+.tool-card {
+  background: var(--card); border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 20px; margin-bottom: 14px;
+  cursor: pointer; transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  -webkit-tap-highlight-color: transparent;
+}
+.tool-card:active { transform: scale(0.98); box-shadow: none; }
+.tool-card-header { display: flex; align-items: flex-start; gap: 14px; }
+.tool-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; flex-shrink: 0;
+}
+.tool-icon-1 { background: #e3f2fd; color: #1565c0; }
+.tool-icon-2 { background: var(--gold-light); color: #7a5c1a; }
+.tool-card-title { font-size: 16px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+.tool-card-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.tool-card-arrow { margin-left: auto; color: var(--hint); font-size: 20px; padding-top: 2px; flex-shrink: 0; }
+.tool-card-footer { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f3f4f6; display: flex; gap: 8px; flex-wrap: wrap; }
+.tool-tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 600; }
+.tag-blue { background: #e3f2fd; color: #1565c0; }
+.tag-gold { background: var(--gold-light); color: #7a5c1a; }
+.tag-green { background: #e8f5e9; color: #2e7d32; }
+
+.db-card {
+  background: #f0f7ff; border: 1px solid #bbdefb;
+  border-radius: 14px; padding: 16px; margin-bottom: 14px;
+}
+.db-card-title { font-size: 13px; font-weight: 700; color: #1565c0; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.db-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.dot-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-ok { background: #4caf50; }
+.dot-warn { background: #ff9800; }
+
+/* ======== SHARED STYLES ======== */
+.page { padding: 0 14px; }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px; margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.card-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+.card-title i { font-size: 18px; }
+.field { margin-top: 11px; }
+.field-label { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 5px; }
+input[type=text], input[type=tel], input[type=date], select, textarea {
+  width: 100%; font-size: 14px; font-family: inherit;
+  padding: 10px 12px; border-radius: 10px;
+  border: 1.5px solid #e5e7eb; background: #f9f9f9; color: #1a1a1a;
+  outline: none; transition: border 0.2s; -webkit-appearance: none; appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--navy); background: white; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%236b7280' d='m7 10 5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+textarea { resize: none; height: 68px; line-height: 1.5; }
+.check-row { display: flex; align-items: flex-start; gap: 12px; padding: 11px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.check-row:last-child { border-bottom: none; }
+.check-row:active { background: #f9f9f9; border-radius: 8px; }
+.checkbox { width: 24px; height: 24px; border-radius: 7px; border: 2px solid #d1d5db; background: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 0; transition: all 0.15s; }
+.checkbox.checked { background: var(--navy); border-color: var(--navy); }
+.checkbox i { font-size: 14px; color: white; }
+.check-label { font-size: 14px; color: #1a1a1a; line-height: 1.55; flex: 1; padding-top: 2px; }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 700; flex-shrink: 0; }
+.badge-done { background: #e8f5e9; color: #2e7d32; }
+.badge-partial { background: #fff8e1; color: #f57f17; }
+.badge-none { background: #f3f4f6; color: #9ca3af; }
+.dot-nav { display: flex; gap: 7px; padding: 4px 14px 14px; flex-wrap: wrap; }
+.dot { width: 9px; height: 9px; border-radius: 50%; cursor: pointer; transition: all 0.2s; }
+.dot-done { background: var(--gold); }
+.dot-active { background: var(--navy); transform: scale(1.3); }
+.dot-future { background: #d1d5db; }
+.btn-primary { width: 100%; padding: 14px; border-radius: 12px; background: var(--navy); color: white; font-weight: 700; font-size: 15px; border: none; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s; -webkit-tap-highlight-color: transparent; }
+.btn-primary:active { opacity: 0.88; }
+.btn-secondary { flex: 1; padding: 13px; border-radius: 12px; border: 2px solid var(--navy); background: transparent; color: var(--navy); font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; -webkit-tap-highlight-color: transparent; }
+.btn-next { flex: 2; padding: 13px; border-radius: 12px; background: var(--navy); color: white; font-weight: 700; font-size: 15px; border: none; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; -webkit-tap-highlight-color: transparent; }
+.nav-row { display: flex; gap: 10px; margin-top: 4px; }
+.divider { height: 1px; background: #f3f4f6; margin: 14px 0; }
+.opt { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1.5px solid #e5e7eb; background: #f9f9f9; color: #374151; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between; transition: all 0.15s; -webkit-tap-highlight-color: transparent; margin-bottom: 6px; }
+.opt:last-child { margin-bottom: 0; }
+.opt:active { transform: scale(0.98); }
+.opt.selected-good { border-color: #2e7d32; background: #e8f5e9; color: #1b5e20; }
+.opt.selected-mid { border-color: #e65100; background: #fff3e0; color: #bf360c; }
+.opt.selected-bad { border-color: #c62828; background: #ffebee; color: #b71c1c; }
+.opt-score-badge { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 20px; background: rgba(0,0,0,0.06); flex-shrink: 0; margin-left: 8px; }
+.warn-tag { font-size: 11px; background: #ffebee; color: #c62828; border-radius: 6px; padding: 6px 10px; margin-top: 6px; border-left: 3px solid #c62828; display: flex; align-items: flex-start; gap: 6px; }
+.criterion { margin-bottom: 18px; }
+.criterion:last-child { margin-bottom: 0; }
+.criterion-label { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.criterion-max { font-size: 11px; color: var(--hint); font-weight: 400; }
+.score-ring-wrap { display: flex; justify-content: center; margin: 8px 0 16px; }
+.rec-banner { border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.section-bar-row { margin-bottom: 10px; }
+.section-bar-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: var(--muted); }
+.section-bar-label span:last-child { font-weight: 700; color: #1a1a1a; }
+.section-bar-track { height: 6px; background: #f3f4f6; border-radius: 3px; }
+.section-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+.warn-item { background: #ffebee; border-left: 3px solid #c62828; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #b71c1c; margin-bottom: 8px; }
+.print-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1.5px solid #d1d5db; background: white; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+@media print { .header, .logout-btn, .nav-row, .print-btn, .btn-primary, .btn-secondary, .dashboard-hero { display: none !important; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ─── 設定區（可修改） ─── */
+const CONFIG = {
+  // 預設密碼 HoDa@2025 的 SHA-256 hash，如需換密碼請至 README 說明
+  PASSWORD_HASH: "32ecec45d7b4df854384d733275833dabfba425a36d3594776fa091332b266d7",
+  // Google Apps Script 部署 URL（完成後填入）
+  SCRIPT_URL: "YOUR_APPS_SCRIPT_URL_HERE",
+  // 系統名稱
+  SYSTEM_NAME: "禾大業務工具系統",
+};
+
+/* ─── 全域狀態 ─── */
+let session = { loggedIn: false, user: "" };
+
+/* ─── 工具一：勘查清單 ─── */
+const CL_SECTIONS = [
+  { title:"屋主身份與權利資料", icon:"ti-id-badge", items:["屋主身分證正反面影本","建物權狀影本","土地權狀影本（如有）","建物謄本（最新版本）","房屋稅單或地價稅單","授權書＋代理人身分證（非本人時）","全體共有人同意書（多人共有）"], fields:[{key:"ownerName",label:"屋主姓名"},{key:"ownerPhone",label:"聯絡電話",type:"tel"},{key:"ownerLine",label:"LINE ID"}]},
+  { title:"房屋基本資料", icon:"ti-building", items:["門牌地址確認","樓層／總樓層確認","建物型態確認","權狀坪數／實際坪數","格局確認","有無電梯","有無車位","公設／陽台／頂樓加蓋","建物用途：住宅確認"], fields:[{key:"floor",label:"樓層／總樓層"},{key:"buildingType",label:"建物型態",type:"select",options:["公寓","華廈","透天","套房分租","其他"]},{key:"area",label:"坪數"},{key:"layout",label:"格局"}]},
+  { title:"目前出租狀況", icon:"ti-users", items:["是否已有租客","現有租約影本","各房間租金確認","押金金額","租期起訖","租客名單與聯絡","是否有欠租","是否有糾紛或即將退租","確認接受租補/戶籍/寵物/開伙意願"], fields:[{key:"hasTenants",label:"目前有無租客",type:"select",options:["有","無","部分有"]},{key:"monthlyRent",label:"每月總租金 (NT$)"},{key:"deposit",label:"押金 (NT$)"}]},
+  { title:"收支與費用資料", icon:"ti-receipt", items:["每月租金確認","水費收費方式","電費方式（獨立電表）","瓦斯費","公共電費分攤","網路費／第四台","管理費","清潔費","垃圾處理方式","近一年修繕支出"], fields:[{key:"electricMeter",label:"電表",type:"select",options:["獨立","共用","部分獨立"]},{key:"waterMeter",label:"水表",type:"select",options:["獨立","共用"]},{key:"mgmtFee",label:"管理費 (NT$/月)"},{key:"repairCost",label:"近一年修繕支出 (NT$)"}]},
+  { title:"屋況與設備", icon:"ti-tool", items:["每間房照片／影片","公共區域照片","衛浴/廚房/陽台/外牆照片","水電管線狀況","有無漏水／壁癌","最近維修時間","家具家電清單","冷氣/熱水器/洗衣機狀況","鑰匙/門禁卡數量確認"], fields:[{key:"leakStatus",label:"漏水/壁癌狀況"},{key:"lastRepair",label:"最近維修時間"},{key:"keyCount",label:"鑰匙數量"},{key:"cardCount",label:"門禁卡數量"}]},
+  { title:"包租／代管條件", icon:"ti-writing", items:["屋主期待月租金","純代管 vs 包租確認","接受30-60天試營運","接受禾大統一管理","接受必要修繕","修繕費負擔確認","小額修繕授權額度","接受轉租或分租","合約年限確認"], fields:[{key:"mgmtType",label:"管理方式",type:"select",options:["包租","代管","待定"]},{key:"expectedRent",label:"期待月租 (NT$)"},{key:"repairLimit",label:"小額修繕授權額度 (NT$)"},{key:"contractYears",label:"合約年限（年）"}]},
+  { title:"現場交接資料", icon:"ti-key", items:["鑰匙交接","門禁卡交接","信箱鑰匙交接","水電瓦斯帳單","網路帳號","管委會聯絡方式","大樓規約","垃圾清運時間","附近停車/管理室注意事項"], fields:[{key:"garbageTime",label:"垃圾清運時間"},{key:"netAccount",label:"網路帳號"},{key:"buildingMgr",label:"管委會聯絡方式"},{key:"specialNote",label:"特殊注意事項"}]},
+];
+let clState = { step:0, landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)}, checks:{}, fields:{}, notes:{}, submitted:false };
+
+/* ─── 工具二：評分表 ─── */
+const SC_SECTIONS = [
+  { title:"地段與交通條件", icon:"ti-map-pin", maxScore:20, criteria:[
+    { id:"transport", label:"捷運／公車距離", opts:[{label:"步行5分鐘內",score:8,cls:"good"},{label:"5–10分鐘",score:5,cls:"mid"},{label:"10–20分鐘",score:2,cls:"mid"},{label:"20分以上",score:0,cls:"bad"}]},
+    { id:"livability", label:"周邊生活機能", opts:[{label:"非常便利",score:7,cls:"good"},{label:"普通",score:4,cls:"mid"},{label:"較不方便",score:1,cls:"bad"}]},
+    { id:"safety", label:"治安與社區評價", opts:[{label:"良好",score:5,cls:"good"},{label:"普通",score:3,cls:"mid"},{label:"較差",score:0,cls:"bad"}]},
+  ]},
+  { title:"屋況與設備", icon:"ti-building", maxScore:20, criteria:[
+    { id:"leak", label:"漏水／壁癌問題", redFlag:true, opts:[{label:"完全無問題",score:8,cls:"good"},{label:"輕微或已修繕",score:4,cls:"mid"},{label:"嚴重問題未處理",score:0,cls:"bad",warn:"⚠️ 建議要求屋主先修繕再承接"}]},
+    { id:"age", label:"屋齡與結構", opts:[{label:"10年以內",score:6,cls:"good"},{label:"10–25年",score:3,cls:"mid"},{label:"25年以上",score:1,cls:"bad"}]},
+    { id:"equipment", label:"裝潢設備完整度", opts:[{label:"全配/新裝潢",score:6,cls:"good"},{label:"基本配備",score:3,cls:"mid"},{label:"需大量添購",score:0,cls:"bad"}]},
+  ]},
+  { title:"租金與市場競爭力", icon:"ti-currency-dollar", maxScore:20, criteria:[
+    { id:"rentExpect", label:"期待租金 vs 市場行情", opts:[{label:"低於市場（好招租）",score:10,cls:"good"},{label:"符合市場",score:7,cls:"good"},{label:"略高市場5–10%",score:3,cls:"mid"},{label:"高於市場10%以上",score:0,cls:"bad",warn:"租金過高，招租期恐拉長"}]},
+    { id:"competitiveness", label:"物件市場競爭力", opts:[{label:"強（電梯/停車/近捷運）",score:10,cls:"good"},{label:"中等",score:6,cls:"mid"},{label:"弱",score:2,cls:"bad"}]},
+  ]},
+  { title:"屋主配合度", icon:"ti-handshake", maxScore:20, criteria:[
+    { id:"mgmtCooperate", label:"接受禾大統一管理", redFlag:true, opts:[{label:"完全配合",score:6,cls:"good"},{label:"部分配合",score:3,cls:"mid"},{label:"難以溝通",score:0,cls:"bad",warn:"⚠️ 屋主配合度低，日後衝突風險高"}]},
+    { id:"repairAuth", label:"小額修繕授權額度", opts:[{label:"NT$5,000以上",score:7,cls:"good"},{label:"NT$3,000–5,000",score:4,cls:"mid"},{label:"NT$3,000以下/不授權",score:1,cls:"bad"}]},
+    { id:"contractTerm", label:"合約年限意願", opts:[{label:"2年以上",score:7,cls:"good"},{label:"1–2年",score:4,cls:"mid"},{label:"1年以下",score:1,cls:"bad"}]},
+  ]},
+  { title:"現有風險評估", icon:"ti-alert-triangle", maxScore:10, criteria:[
+    { id:"tenantRisk", label:"現有租客問題", redFlag:true, opts:[{label:"無或狀況正常",score:5,cls:"good"},{label:"有欠租協商中",score:2,cls:"mid"},{label:"有糾紛/嚴重欠租",score:0,cls:"bad",warn:"⚠️ 租客問題未解決，承接後恐需立即處理"}]},
+    { id:"legalRisk", label:"法律／產權問題", redFlag:true, opts:[{label:"產權清晰無問題",score:5,cls:"good"},{label:"輕微/處理中",score:2,cls:"mid"},{label:"有糾紛/共有人不齊",score:0,cls:"bad",warn:"⚠️ 法律問題未解決，強烈建議暫緩承接"}]},
+  ]},
+  { title:"財務預估", icon:"ti-calculator", maxScore:10, criteria:[
+    { id:"repairCost", label:"預估啟動修繕成本", opts:[{label:"5萬以內",score:5,cls:"good"},{label:"5–20萬",score:2,cls:"mid"},{label:"20萬以上",score:0,cls:"bad",warn:"啟動成本過高，請重新議定分擔條件"}]},
+    { id:"vacancy", label:"預估空置招租期", opts:[{label:"1個月以內",score:5,cls:"good"},{label:"1–3個月",score:2,cls:"mid"},{label:"3個月以上",score:0,cls:"bad"}]},
+  ]},
+];
+const SC_MAX = SC_SECTIONS.reduce((a,s)=>a+s.maxScore,0);
+let scState = { step:0, info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""}, answers:{}, note:"", submitted:false };
+
+/* ─── 路由 ─── */
+let currentView = "login"; // login | dashboard | checklist | scoring
+
+const app = document.getElementById("app");
+
+/* ─── 工具函數 ─── */
+async function sha256(msg) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function setHTML(html) { app.innerHTML = html; window.scrollTo(0,0); }
+
+function fieldHTML(f, val) {
+  if (f.type === "select") {
+    const opts = (f.options||[]).map(o=>`<option value="${o}" ${val===o?"selected":""}>${o}</option>`).join("");
+    return `<div class="field"><div class="field-label">${f.label}</div><select data-key="${f.key}"><option value="">請選擇</option>${opts}</select></div>`;
+  }
+  return `<div class="field"><div class="field-label">${f.label}</div><input type="${f.type||'text'}" data-key="${f.key}" value="${val||''}" placeholder="${f.placeholder||''}"></div>`;
+}
+
+function bindField(el, obj) {
+  el.querySelectorAll("input[data-key], select[data-key]").forEach(inp => {
+    inp.addEventListener("input", e => { obj[e.target.dataset.key] = e.target.value; });
+  });
+}
+
+function getProgress(step, max) {
+  if (step === 0) return 2;
+  if (step > max) return 100;
+  return Math.round((step / (max + 1)) * 100);
+}
+
+async function postToSheets(type, data) {
+  if (CONFIG.SCRIPT_URL === "YOUR_APPS_SCRIPT_URL_HERE") return true;
+  try {
+    await fetch(CONFIG.SCRIPT_URL, {
+      method: "POST", mode: "no-cors",
+      body: JSON.stringify({ type, ...data }),
+      headers: { "Content-Type": "application/json" }
+    });
+    return true;
+  } catch(e) { return false; }
+}
+
+/* ─── LOGIN ─── */
+function renderLogin() {
+  currentView = "login";
+  setHTML(`
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="login-logo-icon">禾大</div>
+          <div class="login-logo-title">${CONFIG.SYSTEM_NAME}</div>
+          <div class="login-logo-sub">僅限禾大屋管業務人員使用</div>
+        </div>
+        <div class="login-label">業務姓名</div>
+        <input type="text" class="login-input" id="login-user" placeholder="請輸入您的姓名" style="letter-spacing:0;margin-bottom:12px">
+        <div class="login-label">系統密碼</div>
+        <input type="password" class="login-input" id="login-pw" placeholder="••••••••">
+        <div class="login-error" id="login-err">密碼錯誤，請再試一次</div>
+        <button class="login-btn" id="login-btn">
+          <i class="ti ti-login" style="font-size:18px"></i>登入系統
+        </button>
+        <div class="login-footer">禾大屋管 HoDa Property Management<br>如忘記密碼請聯繫 Frank</div>
+      </div>
+    </div>`);
+  document.getElementById("login-pw").addEventListener("keydown", e => { if (e.key==="Enter") doLogin(); });
+  document.getElementById("login-btn").addEventListener("click", doLogin);
+}
+
+async function doLogin() {
+  const user = document.getElementById("login-user").value.trim();
+  const pw = document.getElementById("login-pw").value;
+  const err = document.getElementById("login-err");
+  if (!user) { err.style.display="block"; err.textContent="請輸入業務姓名"; return; }
+  const hash = await sha256(pw);
+  if (hash === CONFIG.PASSWORD_HASH) {
+    session.loggedIn = true;
+    session.user = user;
+    scState.info.appraiser = user;
+    err.style.display = "none";
+    renderDashboard();
+  } else {
+    err.style.display = "block";
+    err.textContent = "密碼錯誤，請再試一次";
+    document.getElementById("login-pw").value = "";
+  }
+}
+
+/* ─── DASHBOARD ─── */
+function renderDashboard() {
+  currentView = "dashboard";
+  const dbConnected = CONFIG.SCRIPT_URL !== "YOUR_APPS_SCRIPT_URL_HERE";
+  setHTML(`
+    <div id="dash-root">
+      <div class="dashboard-hero">
+        <button class="logout-btn" id="logout-btn"><i class="ti ti-logout" style="font-size:13px"></i>登出</button>
+        <div class="dashboard-logo-badge">禾大屋管 HODA</div>
+        <div class="dashboard-title">業務工具系統</div>
+        <div class="dashboard-sub">選擇工具開始作業</div>
+        <div class="dashboard-user">
+          <div class="dashboard-user-avatar">${session.user.charAt(0)}</div>
+          <div>
+            <div class="dashboard-user-name">${session.user}</div>
+            <div class="dashboard-user-role">業務人員 · ${new Date().toLocaleDateString('zh-TW')}</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 14px">
+        <div class="tool-card" id="go-checklist">
+          <div class="tool-card-header">
+            <div class="tool-icon tool-icon-1"><i class="ti ti-clipboard-check" style="font-size:26px"></i></div>
+            <div style="flex:1">
+              <div class="tool-card-title">包租代管前勘查清單</div>
+              <div class="tool-card-desc">七大區塊逐項確認，現場拜訪屋主時使用，完成後自動存入資料庫</div>
+            </div>
+            <i class="ti ti-chevron-right tool-card-arrow"></i>
+          </div>
+          <div class="tool-card-footer">
+            <span class="tool-tag tag-blue">7 大區塊</span>
+            <span class="tool-tag tag-blue">屋主資料</span>
+            <span class="tool-tag tag-green">存入 Sheets</span>
+          </div>
+        </div>
+        <div class="tool-card" id="go-scoring">
+          <div class="tool-card-header">
+            <div class="tool-icon tool-icon-2"><i class="ti ti-star" style="font-size:26px"></i></div>
+            <div style="flex:1">
+              <div class="tool-card-title">物件承接評分表</div>
+              <div class="tool-card-desc">六維度 100 分評估，自動給出承接建議，紅色旗標警示高風險項目</div>
+            </div>
+            <i class="ti ti-chevron-right tool-card-arrow"></i>
+          </div>
+          <div class="tool-card-footer">
+            <span class="tool-tag tag-gold">6 維度</span>
+            <span class="tool-tag tag-gold">100 分制</span>
+            <span class="tool-tag tag-green">存入 Sheets</span>
+          </div>
+        </div>
+        <div class="db-card">
+          <div class="db-card-title"><i class="ti ti-database" style="font-size:16px"></i>Google Sheets 資料庫</div>
+          <div class="db-status">
+            <div class="dot-status ${dbConnected?'dot-ok':'dot-warn'}"></div>
+            ${dbConnected ? '已連線，資料將自動儲存' : '尚未連線，請填入 Apps Script URL'}
+          </div>
+          <div style="font-size:11px;color:var(--hint)">每筆送出資料將記錄至禾大屋管後台試算表</div>
+        </div>
+      </div>
+    </div>`);
+  document.getElementById("logout-btn").addEventListener("click", () => { session.loggedIn=false; session.user=""; renderLogin(); });
+  document.getElementById("go-checklist").addEventListener("click", () => { clState={step:0,landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)},checks:{},fields:{},notes:{},submitted:false}; renderCL(); });
+  document.getElementById("go-scoring").addEventListener("click", () => { scState={step:0,info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""},answers:{},note:"",submitted:false}; renderSC(); });
+}
+
+/* ════════════════════════════════
+   工具一：勘查清單 (CL)
+════════════════════════════════ */
+function clCalcSectionProg(si) {
+  const items = CL_SECTIONS[si].items;
+  const checked = items.filter((_,i)=>clState.checks[`${si}-${i}`]).length;
+  return { checked, total: items.length };
+}
+function clCalcTotal() {
+  let c=0,t=0;
+  CL_SECTIONS.forEach((_,i)=>{ const p=clCalcSectionProg(i); c+=p.checked; t+=p.total; });
+  return {c,t};
+}
+function clBadgeClass(pct) { return pct===100?"badge badge-done":pct>0?"badge badge-partial":"badge badge-none"; }
+
+function renderCL() {
+  currentView = "checklist";
+  if (clState.submitted) { renderCLDone(); return; }
+  if (clState.step === 0) { renderCLInfo(); return; }
+  if (clState.step > CL_SECTIONS.length) { renderCLReview(); return; }
+  renderCLSection(clState.step-1);
+}
+function renderCLInfo() {
+  const l = clState.landlord;
+  const html = `
+    <div class="header" style="position:relative">
+      <button class="logout-btn" onclick="renderDashboard()"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">包租代管前勘查清單</div>
+      <div class="header-sub">請先填寫基本資料</div>
+      <div class="progress-track"><div class="progress-fill" style="width:2%"></div></div>
+    </div>
+    <div class="page">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-user-circle"></i>房東基本資料</div>
+        ${[{key:"name",label:"屋主姓名",placeholder:"王大明"},{key:"phone",label:"聯絡電話",type:"tel",placeholder:"0912-345-678"},{key:"line",label:"LINE ID",placeholder:"wang123"},{key:"address",label:"勘查物件地址",placeholder:"台北市中山區..."},{key:"date",label:"勘查日期",type:"date"}].map(f=>fieldHTML(f,l[f.key])).join("")}
+      </div>
+      <button class="btn-primary" id="cl-start"><i class="ti ti-player-play" style="font-size:17px"></i>開始逐項確認</button>
+    </div>`;
+  setHTML(html);
+  bindField(app, clState.landlord);
+  app.querySelector("#cl-start").addEventListener("click",()=>{ clState.step=1; renderCL(); });
+  app.querySelector(".logout-btn").addEventListener("click", renderDashboard);
+}
+function renderCLSection(si) {
+  const sec = CL_SECTIONS[si];
+  const {checked:sc,total:st} = clCalcSectionProg(si);
+  const {c,t} = clCalcTotal();
+  const dots = CL_SECTIONS.map((_,i)=>`<div class="dot ${i<si?'dot-done':i===si?'dot-active':'dot-future'}" data-si="${i}"></div>`).join("");
+  const items = sec.items.map((item,i)=>{
+    const key=`${si}-${i}`, ck=!!clState.checks[key];
+    return `<div class="check-row" data-key="${key}"><div class="checkbox ${ck?'checked'}">${ck?'<i class="ti ti-check"></i>':''}</div><div class="check-label">${item}</div></div>`;
+  }).join("");
+  const fields = (sec.fields||[]).map(f=>fieldHTML(f,clState.fields[f.key])).join("");
+  const isLast = clState.step===CL_SECTIONS.length;
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="cl-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 · ${si+1}/${CL_SECTIONS.length}</div>
+      <div class="header-title">${sec.title}</div>
+      <div class="header-sub">${clState.landlord.address||'物件勘查'}</div>
+      <div class="progress-track"><div class="progress-fill" style="width:${getProgress(clState.step,CL_SECTIONS.length)}%"></div></div>
+      <div class="header-score-chip">${c}/${t}</div>
+    </div>
+    <div class="page">
+      <div class="dot-nav">${dots}</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ${sec.icon}"></i>核對項目</div>
+          <span class="${clBadgeClass(Math.round(sc/st*100))}">${sc}/${st}</span>
+        </div>${items}
+      </div>
+      ${fields?`<div class="card"><div class="card-title"><i class="ti ti-forms"></i>記錄數據</div>${fields}</div>`:""}
+      <div class="card">
+        <div class="field-label" style="margin-bottom:6px">現場備注</div>
+        <textarea data-si="${si}" placeholder="現場狀況補充說明...">${clState.notes[si]||""}</textarea>
+      </div>
+      <div class="nav-row">
+        <button class="btn-secondary" id="cl-back"><i class="ti ti-arrow-left" style="font-size:15px"></i>上一步</button>
+        <button class="btn-next" id="cl-next">${isLast?"查看總覽":"下一步"}<i class="ti ti-arrow-right" style="font-size:15px"></i></button>
+      </div>
+    </div>`);
+  app.querySelectorAll(".check-row[data-key]").forEach(el=>el.addEventListener("click",()=>{ clState.checks[el.dataset.key]=!clState.checks[el.dataset.key]; renderCL(); }));
+  app.querySelectorAll(".dot[data-si]").forEach(el=>el.addEventListener("click",()=>{ clState.step=parseInt(el.dataset.si)+1; renderCL(); }));
+  bindField(app, clState.fields);
+  const ta = app.querySelector("textarea[data-si]");
+  if(ta) ta.addEventListener("input",e=>{ clState.notes[e.target.dataset.si]=e.target.value; });
+  app.querySelector("#cl-back").addEventListener("click",()=>{ clState.step--; renderCL(); });
+  app.querySelector("#cl-next").addEventListener("click",()=>{ clState.step++; renderCL(); });
+  app.querySelector("#cl-home-btn").addEventListener("click", renderDashboard);
+}
+function renderCLReview() {
+  const allP = CL_SECTIONS.map((_,i)=>clCalcSectionProg(i));
+  const tc = allP.reduce((a,b)=>a+b.checked,0), tt = allP.reduce((a,b)=>a+b.total,0);
+  const pct = Math.round(tc/tt*100);
+  const rows = CL_SECTIONS.map((s,i)=>{ const {checked:c,total:t}=allP[i],p=Math.round(c/t*100); return `<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;cursor:pointer" data-si="${i}"><span style="font-size:13px">${s.title}</span><span class="${clBadgeClass(p)}">${c}/${t}</span></div>`; }).join("");
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="cl-home-btn2"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">確認送出</div>
+      <div class="header-sub">${clState.landlord.address||'物件地址未填'}</div>
+      <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+    <div class="page">
+      <div class="card" style="text-align:center;padding:20px">
+        <div style="font-size:42px;font-weight:800;color:var(--navy)">${pct}%</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">共 ${tt} 項，已確認 ${tc} 項</div>
+        <div style="height:7px;background:#f3f4f6;border-radius:4px;margin-top:12px"><div style="height:100%;width:${pct}%;background:${pct>=80?'var(--gold)':'var(--navy)'};border-radius:4px;transition:width .5s"></div></div>
+      </div>
+      ${rows}
+      <button class="btn-secondary" id="cl-back2" style="width:100%;margin-bottom:10px">返回修改</button>
+      <button class="btn-primary" id="cl-submit"><i class="ti ti-send" style="font-size:17px"></i>確認送出至 Google Sheets</button>
+      <div style="font-size:11px;color:var(--hint);text-align:center;margin-top:8px">資料將儲存至禾大屋管房東資料庫</div>
+    </div>`);
+  app.querySelectorAll(".card[data-si]").forEach(el=>el.addEventListener("click",()=>{ clState.step=parseInt(el.dataset.si)+1; renderCL(); }));
+  app.querySelector("#cl-back2").addEventListener("click",()=>{ clState.step=CL_SECTIONS.length; renderCL(); });
+  app.querySelector("#cl-home-btn2").addEventListener("click", renderDashboard);
+  app.querySelector("#cl-submit").addEventListener("click", async()=>{
+    const btn=app.querySelector("#cl-submit"); btn.disabled=true; btn.textContent="送出中...";
+    await postToSheets("checklist",{ landlord:clState.landlord, fields:clState.fields, sections:CL_SECTIONS.map((s,i)=>({title:s.title,items:s.items.map((item,j)=>({item,checked:!!clState.checks[`${i}-${j}`]})),notes:clState.notes[i]||""})), appraiser:session.user, submittedAt:new Date().toISOString() });
+    clState.submitted=true; renderCLDone();
+  });
+}
+function renderCLDone() {
+  setHTML(`
+    <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">送出完成</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
+    <div class="page" style="padding-top:40px;text-align:center">
+      <div style="width:80px;height:80px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px"><i class="ti ti-check" style="font-size:40px;color:#2e7d32"></i></div>
+      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">資料已送出！</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.8">${clState.landlord.name?'<strong>'+clState.landlord.name+'</strong> · ':''} ${clState.landlord.address||'物件'}<br>已記錄至 Google Sheets</div>
+      <button class="btn-primary" id="cl-new" style="margin-top:28px"><i class="ti ti-plus" style="font-size:17px"></i>新增下一筆</button>
+      <button class="btn-secondary" id="cl-dash" style="width:100%;margin-top:10px"><i class="ti ti-home" style="font-size:15px"></i>回首頁</button>
+    </div>`);
+  app.querySelector("#cl-new").addEventListener("click",()=>{ clState={step:0,landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)},checks:{},fields:{},notes:{},submitted:false}; renderCL(); });
+  app.querySelector("#cl-dash").addEventListener("click", renderDashboard);
+}
+
+/* ════════════════════════════════
+   工具二：評分表 (SC)
+════════════════════════════════ */
+function scCalc() { return SC_SECTIONS.reduce((a,s)=>a+s.criteria.reduce((b,c)=>b+(scState.answers[c.id]!==undefined?c.opts[scState.answers[c.id]].score:0),0),0); }
+function scSecScore(si) { return SC_SECTIONS[si].criteria.reduce((a,c)=>a+(scState.answers[c.id]!==undefined?c.opts[scState.answers[c.id]].score:0),0); }
+function scWarns() { const w=[]; SC_SECTIONS.forEach(s=>s.criteria.forEach(c=>{ if(!c.redFlag)return; const sel=scState.answers[c.id]; if(sel!==undefined&&c.opts[sel].score===0&&c.opts[sel].warn)w.push(c.opts[sel].warn); })); return w; }
+function scOtherWarns() { const w=[]; SC_SECTIONS.forEach(s=>s.criteria.forEach(c=>{ if(c.redFlag)return; const sel=scState.answers[c.id]; if(sel!==undefined&&c.opts[sel]&&c.opts[sel].warn)w.push(c.opts[sel].warn); })); return w; }
+function barColor(p) { return p>=90?"#2e7d32":p>=80?"var(--gold)":"#e65100"; }
+
+function renderSC() {
+  currentView = "scoring";
+  if (scState.submitted) { renderSCDone(); return; }
+  if (scState.step===0) { renderSCInfo(); return; }
+  if (scState.step>SC_SECTIONS.length) { renderSCResult(); return; }
+  renderSCSection(scState.step-1);
+}
+function renderSCInfo() {
+  const info=scState.info;
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="sc-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">物件承接評分表</div>
+      <div class="header-sub">業務評估用</div>
+      <div class="progress-track"><div class="progress-fill" style="width:2%"></div></div>
+    </div>
+    <div class="page">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-clipboard-text"></i>基本資料</div>
+        ${[{key:"address",label:"物件地址",placeholder:"台北市中山區..."},{key:"appraiser",label:"評估業務"},{key:"contact",label:"屋主姓名／聯絡"},{key:"date",label:"評估日期",type:"date"}].map(f=>fieldHTML(f,info[f.key])).join("")}
+      </div>
+      <div class="card" style="background:var(--gold-light);border-color:#e8d5a3">
+        <div style="font-size:13px;color:#7a5c1a;font-weight:600;margin-bottom:6px"><i class="ti ti-info-circle" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>評分標準</div>
+        <div style="font-size:12px;color:#7a5c1a;line-height:1.9">90分以上 ✅ 優先承接 · 85–89分 🟢 建議承接<br>80–84分 🟡 謹慎考慮 · 70–79分 🟠 高度謹慎<br>70分以下 🔴 不建議承接</div>
+      </div>
+      <button class="btn-primary" id="sc-start"><i class="ti ti-player-play" style="font-size:17px"></i>開始評分</button>
+    </div>`);
+  bindField(app, scState.info);
+  app.querySelector("#sc-start").addEventListener("click",()=>{ scState.step=1; renderSC(); });
+  app.querySelector("#sc-home-btn").addEventListener("click", renderDashboard);
+}
+function renderSCSection(si) {
+  const sec=SC_SECTIONS[si], score=scCalc();
+  const dots=SC_SECTIONS.map((_,i)=>`<div class="dot ${i<si?'dot-done':i===si?'dot-active':'dot-future'}" data-si="${i}"></div>`).join("");
+  const criteriaHTML=sec.criteria.map((c,ci)=>{
+    const sel=scState.answers[c.id];
+    const selOpt=sel!==undefined?c.opts[sel]:null;
+    const opts=c.opts.map((o,oi)=>`<button class="opt ${sel===oi?'selected-'+o.cls:''}" data-cid="${c.id}" data-oi="${oi}"><span>${o.label}</span><span class="opt-score-badge">${o.score}分</span></button>`).join("");
+    const warnHTML=(selOpt&&selOpt.warn)?`<div class="warn-tag"><i class="ti ti-alert-triangle" style="font-size:14px;flex-shrink:0"></i>${selOpt.warn}</div>`:"";
+    const flagHTML=c.redFlag?`<i class="ti ti-flag-3" style="font-size:13px;color:#c62828"></i>`:"";
+    return `<div class="criterion"><div class="criterion-label">${flagHTML}${c.label}<span class="criterion-max">（最高${c.opts[0].score}分）</span></div><div class="opts">${opts}</div>${warnHTML}</div>${ci<sec.criteria.length-1?'<div class="divider"></div>':""}`;
+  }).join("");
+  const isLast=scState.step===SC_SECTIONS.length;
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="sc-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 · ${si+1}/${SC_SECTIONS.length}</div>
+      <div class="header-title">${sec.title}</div>
+      <div class="header-sub">${scState.info.address||'物件評分'}</div>
+      <div class="progress-track"><div class="progress-fill" style="width:${getProgress(scState.step,SC_SECTIONS.length)}%"></div></div>
+      <div class="header-score-chip">${score}/${SC_MAX}</div>
+    </div>
+    <div class="page">
+      <div class="dot-nav">${dots}</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="card-title" style="margin-bottom:0"><i class="ti ${sec.icon}"></i>${sec.title}</div>
+          <span style="font-size:12px;font-weight:700;color:var(--navy)">${scSecScore(si)}/${sec.maxScore}分</span>
+        </div>${criteriaHTML}
+      </div>
+      <div class="nav-row">
+        <button class="btn-secondary" id="sc-back"><i class="ti ti-arrow-left" style="font-size:15px"></i>上一步</button>
+        <button class="btn-next" id="sc-next">${isLast?"查看結果":"下一步"}<i class="ti ti-arrow-right" style="font-size:15px"></i></button>
+      </div>
+    </div>`);
+  app.querySelectorAll(".opt[data-cid]").forEach(el=>el.addEventListener("click",()=>{ scState.answers[el.dataset.cid]=parseInt(el.dataset.oi); renderSC(); }));
+  app.querySelectorAll(".dot[data-si]").forEach(el=>el.addEventListener("click",()=>{ scState.step=parseInt(el.dataset.si)+1; renderSC(); }));
+  app.querySelector("#sc-back").addEventListener("click",()=>{ scState.step--; renderSC(); });
+  app.querySelector("#sc-next").addEventListener("click",()=>{ scState.step++; renderSC(); });
+  app.querySelector("#sc-home-btn").addEventListener("click", renderDashboard);
+}
+function renderSCResult() {
+  const score=scCalc(), pct=score;
+  let rec,recColor,recBg,recIcon,recSub;
+  if(pct>=90){rec="優先承接";recColor="#1b5e20";recBg="#e8f5e9";recIcon="ti-circle-check";recSub="物件條件優異，建議積極洽談合約";}
+  else if(pct>=85){rec="建議承接";recColor="#1565c0";recBg="#e3f2fd";recIcon="ti-thumb-up";recSub="物件條件良好，可推進承接程序";}
+  else if(pct>=80){rec="謹慎考慮";recColor="#e65100";recBg="#fff3e0";recIcon="ti-alert-circle";recSub="有部分風險，請與主管確認後再推進";}
+  else if(pct>=70){rec="高度謹慎";recColor="#bf360c";recBg="#fbe9e7";recIcon="ti-alert-triangle";recSub="風險偏高，需改善重要項目後重新評估";}
+  else{rec="不建議承接";recColor="#c62828";recBg="#ffebee";recIcon="ti-circle-x";recSub="物件風險過高，建議婉拒或待改善後再評";}
+  const allWarns=[...scWarns(),...scOtherWarns()];
+  const warnHTML=allWarns.length?`<div class="card"><div class="card-title" style="color:#c62828"><i class="ti ti-alert-triangle"></i>風險警示</div>${allWarns.map(w=>`<div class="warn-item">${w}</div>`).join("")}</div>`:"";
+  const barsHTML=SC_SECTIONS.map((s,i)=>{ const ss=scSecScore(i),sp=Math.round(ss/s.maxScore*100); return `<div class="section-bar-row"><div class="section-bar-label"><span>${s.title}</span><span>${ss}/${s.maxScore}分</span></div><div class="section-bar-track"><div class="section-bar-fill" style="width:${sp}%;background:${barColor(sp)}"></div></div></div>`; }).join("");
+  const circ=2*Math.PI*52, filled=circ-(circ*Math.min(score,100)/100);
+  const ringColor=pct>=90?"#2e7d32":pct>=85?"#1565c0":pct>=80?"#C9A84C":pct>=70?"#e65100":"#c62828";
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="sc-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">評分結果</div>
+      <div class="header-sub">${scState.info.address||'物件'} · ${scState.info.appraiser||''}</div>
+      <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+    <div class="page">
+      <div class="card" style="text-align:center;padding:24px 16px">
+        <div class="score-ring-wrap">
+          <svg width="130" height="130" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#f3f4f6" stroke-width="10"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="${ringColor}" stroke-width="10" stroke-dasharray="${circ}" stroke-dashoffset="${filled}" stroke-linecap="round" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s ease"/>
+            <text x="60" y="56" text-anchor="middle" font-size="26" font-weight="800" fill="${ringColor}" font-family="system-ui">${score}</text>
+            <text x="60" y="72" text-anchor="middle" font-size="11" fill="#9ca3af" font-family="system-ui">/ ${SC_MAX} 分</text>
+          </svg>
+        </div>
+        <div class="rec-banner" style="background:${recBg}">
+          <i class="ti ${recIcon}" style="font-size:28px;color:${recColor};flex-shrink:0"></i>
+          <div><div style="font-size:16px;font-weight:800;color:${recColor}">${rec}</div><div style="font-size:12px;color:${recColor};opacity:.8;margin-top:2px">${recSub}</div></div>
+        </div>
+      </div>
+      ${warnHTML}
+      <div class="card"><div class="card-title"><i class="ti ti-chart-bar"></i>各項分數明細</div>${barsHTML}</div>
+      <div class="card"><div class="card-title"><i class="ti ti-note"></i>業務備注</div><textarea id="sc-note" placeholder="記錄現場觀察、屋主態度...">${scState.note}</textarea></div>
+      <div style="background:#f9f9f9;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--muted);line-height:1.9">
+        <strong style="color:#1a1a1a">評分人：</strong>${scState.info.appraiser||session.user} &nbsp; <strong style="color:#1a1a1a">日期：</strong>${scState.info.date||'—'}<br>
+        <strong style="color:#1a1a1a">物件：</strong>${scState.info.address||'—'} &nbsp; <strong style="color:#1a1a1a">屋主：</strong>${scState.info.contact||'—'}
+      </div>
+      <button class="btn-secondary" id="sc-back2" style="width:100%;margin-bottom:10px">返回修改</button>
+      <button class="btn-primary" id="sc-submit"><i class="ti ti-send" style="font-size:17px"></i>送出評分至 Google Sheets</button>
+      <button class="print-btn" id="sc-print"><i class="ti ti-printer" style="font-size:16px"></i>列印 / 儲存 PDF</button>
+    </div>`);
+  const noteEl=app.querySelector("#sc-note");
+  if(noteEl) noteEl.addEventListener("input",e=>{ scState.note=e.target.value; });
+  app.querySelector("#sc-back2").addEventListener("click",()=>{ scState.step=SC_SECTIONS.length; renderSC(); });
+  app.querySelector("#sc-home-btn").addEventListener("click", renderDashboard);
+  app.querySelector("#sc-print").addEventListener("click",()=>window.print());
+  app.querySelector("#sc-submit").addEventListener("click", async()=>{
+    const btn=app.querySelector("#sc-submit"); btn.disabled=true; btn.textContent="送出中...";
+    await postToSheets("scoring",{ info:scState.info, score, recommendation:rec, answers:scState.answers, sections:SC_SECTIONS.map((s,i)=>({title:s.title,score:scSecScore(i),maxScore:s.maxScore})), note:scState.note, appraiser:session.user, submittedAt:new Date().toISOString() });
+    scState.submitted=true; renderSCDone();
+  });
+}
+function renderSCDone() {
+  setHTML(`
+    <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">評分送出完成</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
+    <div class="page" style="padding-top:40px;text-align:center">
+      <div style="width:80px;height:80px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px"><i class="ti ti-check" style="font-size:40px;color:#2e7d32"></i></div>
+      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">評分已送出！</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.8">${scState.info.address||'物件'} 評分結果<br>已記錄至 Google Sheets</div>
+      <button class="btn-primary" id="sc-new" style="margin-top:28px"><i class="ti ti-plus" style="font-size:17px"></i>新增下一筆評估</button>
+      <button class="btn-secondary" id="sc-dash" style="width:100%;margin-top:10px"><i class="ti ti-home" style="font-size:15px"></i>回首頁</button>
+    </div>`);
+  app.querySelector("#sc-new").addEventListener("click",()=>{ scState={step:0,info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""},answers:{},note:"",submitted:false}; renderSC(); });
+  app.querySelector("#sc-dash").addEventListener("click", renderDashboard);
+}
+
+/* ─── 啟動 ─── */
+renderLogin();
+</script>
+</body>
+</html>
