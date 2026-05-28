@@ -34,8 +34,8 @@
       "email": "changpaiwang@gmail.com",
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": "八德路二段174巷15弄11號1樓",
-        "addressLocality": "中山區",
+        "streetAddress": "忠孝東路三段305號9樓之2",
+        "addressLocality": "大安區",
         "addressRegion": "台北市",
         "addressCountry": "TW"
       },
@@ -280,66 +280,6 @@
 </head>
 <body>
 
-<!-- ══ PASSWORD PROTECTION ══ -->
-<div id="pw-overlay" style="
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:#0d1f35;z-index:99999;
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Noto Sans TC',sans-serif;">
-  <div style="
-    background:#fff;border-radius:16px;padding:48px 40px;
-    max-width:400px;width:90%;text-align:center;
-    box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-    <svg style="width:52px;height:52px;margin-bottom:16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0d1f35">
-      <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4a3 3 0 110 6 3 3 0 010-6zm0 8c-2 0-6 1-6 3v1h12v-1c0-2-4-3-6-3z"/>
-    </svg>
-    <h2 style="font-size:1.3rem;color:#0d1f35;margin:0 0 6px;font-weight:700;font-family:'Noto Serif TC',serif;">和大工程</h2>
-    <p style="font-size:.85rem;color:#6b6b6b;margin:0 0 28px;">此頁面為內部專區，請輸入密碼</p>
-    <input id="pw-input" type="password" placeholder="請輸入密碼"
-      style="width:100%;padding:12px 16px;border:2px solid #e0d8cc;
-      border-radius:8px;font-size:1rem;outline:none;
-      box-sizing:border-box;margin-bottom:12px;
-      transition:border-color .2s;font-family:'Noto Sans TC',sans-serif;"
-      onkeydown="if(event.key==='Enter')checkPW()"
-      onfocus="this.style.borderColor='#e07b2a'"
-      onblur="this.style.borderColor='#e0d8cc'">
-    <div id="pw-error" style="color:#c62828;font-size:.82rem;margin-bottom:10px;min-height:18px;"></div>
-    <button onclick="checkPW()" style="
-      width:100%;padding:13px;background:#0d1f35;color:#e07b2a;
-      border:none;border-radius:8px;font-size:1rem;font-weight:700;
-      cursor:pointer;transition:background .2s;font-family:'Noto Sans TC',sans-serif;"
-      onmouseover="this.style.background='#1a3558'"
-      onmouseout="this.style.background='#0d1f35'">進入</button>
-  </div>
-</div>
-<script>
-(function(){
-  if(sessionStorage.getItem('hoda_tax_auth')==='ok'){
-    document.getElementById('pw-overlay').style.display='none';
-  }
-})();
-async function checkPW(){
-  var val=document.getElementById('pw-input').value;
-  var err=document.getElementById('pw-error');
-  var encoder=new TextEncoder();
-  var data=encoder.encode(val);
-  var hashBuffer=await crypto.subtle.digest('SHA-256',data);
-  var hashArray=Array.from(new Uint8Array(hashBuffer));
-  var hashHex=hashArray.map(function(b){return b.toString(16).padStart(2,'0');}).join('');
-  if(hashHex==='adb736c83f5cec1d6a275694c25b544137ab4d4c760c4dadf89523c4167d619a'){
-    sessionStorage.setItem('hoda_tax_auth','ok');
-    var el=document.getElementById('pw-overlay');
-    el.style.opacity='0';
-    el.style.transition='opacity .4s';
-    setTimeout(function(){el.style.display='none';},400);
-  } else {
-    err.textContent='密碼錯誤，請再試一次';
-    document.getElementById('pw-input').value='';
-    document.getElementById('pw-input').focus();
-  }
-}
-</script>
-<!-- ══ END PASSWORD PROTECTION ══ -->
 
 <!-- NAVBAR -->
 <nav class="navbar">
@@ -356,6 +296,8 @@ async function checkPW(){
     <a href="#about">公司簡介</a>
     <a href="#services">服務項目</a>
     <a href="#portfolio">工程實績</a>
+    <a href="#subsidy">老宅延壽補助</a>
+    <a href="./index.html" style="opacity:0.6;">禾大屋管</a>
     <a href="#contact" class="nav-cta">聯絡我們</a>
   </div>
 </nav>
@@ -375,8 +317,7 @@ async function checkPW(){
       <em>專業施工・用心交付</em>
     </h1>
     <p class="hero-subtitle">
-      <!-- TODO: 請填入公司簡短介紹，約 2～3 句話，說明公司專長與服務精神 -->
-      承接各類室內裝修、水電工程、結構修繕，秉持專業技術與嚴謹施工品質，為每位客戶打造安心、耐用的居住與工作空間。
+      專注屋頂、外牆、地下室、電梯坑、水池等各類防水工程，以嚴謹工法與優質材料，為每棟建築提供長效防水保障。並協助申請老宅延壽機能復新補助，讓修繕工程更省力、更省錢。
     </p>
     <div class="hero-stats">
       <div class="stat">
@@ -401,8 +342,7 @@ async function checkPW(){
 
 <!-- ORANGE STRIP -->
 <div class="orange-strip">
-  <p><!-- TODO: 請填入一句話亮點標語，例如「從規劃到驗收，全程品質把關，讓您住得安心、用得放心。」 -->
-  專注防水工程二十年，從屋頂到地下室，全面守護您的建築結構。</p>
+  <p>從免費勘查、透明報價到完工保固，和大工程為您的建築結構全面把關，讓每位客戶住得安心、用得放心。</p>
 </div>
 
 <!-- ══ ABOUT ══ -->
@@ -414,8 +354,7 @@ async function checkPW(){
         <div class="divider"></div>
         <h2 class="sec-title">和大工程<br>值得信賴的施工夥伴</h2>
         <p class="sec-desc">
-          <!-- TODO: 請填入公司介紹，約 3～5 句，說明成立背景、服務理念、技術特色等 -->
-          和大工程成立於 XXXX 年，深耕台北、新北地區，專注於各類建築防水工程。我們擁有豐富的防水施工經驗，熟悉各種工法與材料特性，從屋頂到地下室全面守護建築結構，讓每位客戶遠離漏水困擾。
+          和大工程有限公司成立於 2019 年，深耕台北、新北地區，專注各類建築防水工程。熟悉屋頂 PU 防水、外牆防水、地下室正負壓工法、電梯坑及水池防水等多種施工技術，從精準查漏到全面施作，為每棟建築提供長效防水保障。
         </p>
         <div class="about-points">
           <div class="about-point">
@@ -424,7 +363,7 @@ async function checkPW(){
             </div>
             <div class="ap-text">
               <h4>合法登記・有保障</h4>
-              <p><!-- TODO: 填入證照/執照資訊 -->公司合法立案，工程人員均持有相關技術證照，施工品質有保障。</p>
+              <p>和大工程有限公司合法立案（統編：82910718），工程人員均持有相關技術證照，施工品質有保障。</p>
             </div>
           </div>
           <div class="about-point">
@@ -442,7 +381,7 @@ async function checkPW(){
             </div>
             <div class="ap-text">
               <h4>完工保固・防水保障</h4>
-              <p><!-- TODO: 填入保固期限 -->防水工程完工後提供 X 年保固，保固期內如有滲漏，免費到場處理。</p>
+              <p>防水工程完工後提供保固服務，保固期內如有滲漏問題，免費到場處理，保固年限依工程類型於合約中明確載明。</p>
             </div>
           </div>
         </div>
@@ -946,7 +885,7 @@ async function checkPW(){
       </div>
       <div class="ci">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-        <span>台北市中山區八德路二段174巷15弄11號1樓</span>
+        <span>台北市大安區忠孝東路三段305號9樓之2</span>
       </div>
     </div>
   </div>
