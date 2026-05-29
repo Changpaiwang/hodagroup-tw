@@ -212,61 +212,60 @@ function generateBonusSchedule(ss, p, propId, signDate, params) {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_BONUS_SCHEDULE);
     sheet.appendRow([
-      "建立時間","物件地址","物件ID","受益人","角色","獎金類型",
+      "建立時間","物件地址","物件ID","受益人","受益人Email","角色","獎金類型",
       "預計發放日","金額(NT$)","狀態","發放日期","發放人","備注"
     ]);
     sheet.getRange(1,1,1,sheet.getLastColumn()).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
     sheet.setFrozenRows(1);
   }
 
-  const addr     = p.address || "";
-  const now      = new Date();
-  const years    = parseInt(p.contractYears) || 1;
-  const addMo    = (d, m) => { const n = new Date(d); n.setMonth(n.getMonth() + m); return n; };
-  const entries  = [];
+  const addr      = p.address || "";
+  const now       = new Date();
+  const years     = parseInt(p.contractYears) || 1;
+  const addMo     = (d, m) => { const n = new Date(d); n.setMonth(n.getMonth() + m); return n; };
+  const entries   = [];
+  const refEmail  = p.referrerEmail || "";
+  const mgrEmail  = p.managerEmail  || "";
 
   // ── 引薦人獎金 ──
   if (p.referrer) {
     if (p.mgmtType === "代管") {
       const fee   = parseInt(p.mgmtFee) || 0;
       const total = Math.round(fee * (params.daimgmtRefRate || 0.5));
-      entries.push([now, addr, propId, p.referrer, "引薦人", "代管引薦-首期(40%)",  addMo(signDate, 0),  Math.round(total * (params.daimgmtRef1 || 0.4)), "待發放","","",""]);
-      entries.push([now, addr, propId, p.referrer, "引薦人", "代管引薦-第6月(30%)", addMo(signDate, 6),  Math.round(total * (params.daimgmtRef2 || 0.3)), "待發放","","",""]);
-      entries.push([now, addr, propId, p.referrer, "引薦人", "代管引薦-第12月(30%)",addMo(signDate, 12), Math.round(total * (params.daimgmtRef3 || 0.3)), "待發放","","",""]);
+      entries.push([now, addr, propId, p.referrer, refEmail, "引薦人", "代管引薦-首期(40%)",  addMo(signDate, 0),  Math.round(total * (params.daimgmtRef1 || 0.4)), "待發放","","",""]);
+      entries.push([now, addr, propId, p.referrer, refEmail, "引薦人", "代管引薦-第6月(30%)", addMo(signDate, 6),  Math.round(total * (params.daimgmtRef2 || 0.3)), "待發放","","",""]);
+      entries.push([now, addr, propId, p.referrer, refEmail, "引薦人", "代管引薦-第12月(30%)",addMo(signDate, 12), Math.round(total * (params.daimgmtRef3 || 0.3)), "待發放","","",""]);
     } else if (p.mgmtType === "包租") {
       const spread = (parseInt(p.marketRent)||0) - (parseInt(p.hodaRent)||0);
       if (spread > 0) {
-        entries.push([now, addr, propId, p.referrer, "引薦人", "包租引薦-簽約時", signDate,            spread * (params.baozuRef1 || 1), "待發放","","",""]);
-        entries.push([now, addr, propId, p.referrer, "引薦人", "包租引薦-第6月",  addMo(signDate, 6),  spread * (params.baozuRef2 || 1), "待發放","","",""]);
+        entries.push([now, addr, propId, p.referrer, refEmail, "引薦人", "包租引薦-簽約時", signDate,            spread * (params.baozuRef1 || 1), "待發放","","",""]);
+        entries.push([now, addr, propId, p.referrer, refEmail, "引薦人", "包租引薦-第6月",  addMo(signDate, 6),  spread * (params.baozuRef2 || 1), "待發放","","",""]);
       }
     }
-    // 感謝禮：引薦人 1次/年
     for (let y = 1; y <= years; y++) {
-      entries.push([now, addr, propId, p.referrer, "引薦人", `感謝禮(第${y}年)`, addMo(signDate, y * 12), params.thanksGiftAmount || 1500, "待發放","","",""]);
+      entries.push([now, addr, propId, p.referrer, refEmail, "引薦人", `感謝禮(第${y}年)`, addMo(signDate, y * 12), params.thanksGiftAmount || 1500, "待發放","","",""]);
     }
   }
 
   // ── 管理人員獎金 ──
   if (p.manager) {
-    const fee         = parseInt(p.mgmtFee) || parseInt(p.rentAmount) || 0;
-    const rate        = params.managerBaseRate || 0.15;
+    const fee          = parseInt(p.mgmtFee) || parseInt(p.rentAmount) || 0;
+    const rate         = params.managerBaseRate || 0.15;
     const monthlyBonus = Math.round(fee * rate);
-    // Semi-annual summary entries
     for (let m = 0; m < years * 12; m += 6) {
-      entries.push([now, addr, propId, p.manager, "管理人員", `月度佣金(第${m+1}~${m+6}月)`,
+      entries.push([now, addr, propId, p.manager, mgrEmail, "管理人員", `月度佣金(第${m+1}~${m+6}月)`,
         addMo(signDate, m + 6), monthlyBonus * 6, "待發放","","", `NT$${monthlyBonus}/月 × 6`]);
     }
-    // 感謝禮：管理人員 2次/年
     for (let y = 1; y <= years; y++) {
-      entries.push([now, addr, propId, p.manager, "管理人員", `感謝禮A(第${y}年)`, addMo(signDate, y*12-6), params.thanksGiftAmount || 1500, "待發放","","",""]);
-      entries.push([now, addr, propId, p.manager, "管理人員", `感謝禮B(第${y}年)`, addMo(signDate, y*12),   params.thanksGiftAmount || 1500, "待發放","","",""]);
+      entries.push([now, addr, propId, p.manager, mgrEmail, "管理人員", `感謝禮A(第${y}年)`, addMo(signDate, y*12-6), params.thanksGiftAmount || 1500, "待發放","","",""]);
+      entries.push([now, addr, propId, p.manager, mgrEmail, "管理人員", `感謝禮B(第${y}年)`, addMo(signDate, y*12),   params.thanksGiftAmount || 1500, "待發放","","",""]);
     }
   }
 
   entries.forEach(row => sheet.appendRow(row));
 }
 
-// ─── 獎金儀表板（30天內到期 + 逾期） ───
+// ─── 獎金儀表板（全部待發放，依日期排序） ───
 function listBonusDashboard() {
   const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEET_BONUS_SCHEDULE);
@@ -274,18 +273,13 @@ function listBonusDashboard() {
 
   const data    = sheet.getDataRange().getValues();
   const headers = data[0];
-  const now     = new Date();
 
   const rows = data.slice(1).map((row, i) => {
     const obj = { _rowIndex: i + 2 };
     headers.forEach((h, j) => { obj[h] = row[j] instanceof Date ? row[j].toISOString() : row[j]; });
     return obj;
-  }).filter(r => {
-    if (r['狀態'] === '已發放') return false;
-    const dueDate  = new Date(r['預計發放日']);
-    const diffDays = (dueDate - now) / (1000 * 60 * 60 * 24);
-    return diffDays <= 60;
-  }).sort((a, b) => new Date(a['預計發放日']) - new Date(b['預計發放日']));
+  }).filter(r => r['狀態'] !== '已發放')
+    .sort((a, b) => new Date(a['預計發放日']) - new Date(b['預計發放日']));
 
   return ContentService.createTextOutput(JSON.stringify({ rows })).setMimeType(ContentService.MimeType.JSON);
 }
@@ -312,21 +306,55 @@ function payBonus(ss, data) {
   let recSheet = ss.getSheetByName(SHEET_BONUS_RECORD);
   if (!recSheet) {
     recSheet = ss.insertSheet(SHEET_BONUS_RECORD);
-    recSheet.appendRow(["發放時間","物件地址","受益人","角色","獎金類型","金額(NT$)","發放人","備注"]);
-    recSheet.getRange(1,1,1,8).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
+    recSheet.appendRow(["發放時間","物件地址","受益人","受益人Email","角色","獎金類型","金額(NT$)","發放人","備注"]);
+    recSheet.getRange(1,1,1,9).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
     recSheet.setFrozenRows(1);
   }
   recSheet.appendRow([
-    new Date(), data.address||"", data.recipient||"", data.role||"",
-    data.bonusType||"", data.amount||0, data.paidBy||"", data.note||""
+    new Date(), data.address||"", data.recipient||"", data.recipientEmail||"",
+    data.role||"", data.bonusType||"", data.amount||0, data.paidBy||"", data.note||""
   ]);
 
+  // 更新獎金排程狀態（欄位因新增Email欄移位：狀態=col10, 發放日=col11, 發放人=col12）
   const schedSheet = ss.getSheetByName(SHEET_BONUS_SCHEDULE);
   if (schedSheet && data._rowIndex) {
-    schedSheet.getRange(data._rowIndex, 9).setValue("已發放");
-    schedSheet.getRange(data._rowIndex, 10).setValue(new Date());
-    schedSheet.getRange(data._rowIndex, 11).setValue(data.paidBy || "");
-    schedSheet.getRange(data._rowIndex, 9).setBackground("#e8f5e9");
+    const headers = schedSheet.getRange(1, 1, 1, schedSheet.getLastColumn()).getValues()[0];
+    const statusCol  = headers.indexOf("狀態") + 1;
+    const dateCol    = headers.indexOf("發放日期") + 1;
+    const payerCol   = headers.indexOf("發放人") + 1;
+    if (statusCol) { schedSheet.getRange(data._rowIndex, statusCol).setValue("已發放").setBackground("#e8f5e9"); }
+    if (dateCol)   { schedSheet.getRange(data._rowIndex, dateCol).setValue(new Date()); }
+    if (payerCol)  { schedSheet.getRange(data._rowIndex, payerCol).setValue(data.paidBy || ""); }
+  }
+
+  // 寄送 Email 通知（寄給受益人，副本給禾大屋管）
+  if (data.recipientEmail) {
+    try {
+      const amt     = parseInt(data.amount) || 0;
+      const subject = `[禾大屋管] 獎金發放通知 — NT$${amt.toLocaleString()}`;
+      const htmlBody = `<div style="font-family:-apple-system,sans-serif;max-width:540px;margin:0 auto">
+  <div style="background:#1B3A5C;padding:20px 24px;border-radius:10px 10px 0 0">
+    <div style="font-size:10px;color:#C9A84C;letter-spacing:3px;font-weight:700">禾大屋管 HODA</div>
+    <div style="font-size:20px;font-weight:900;color:white;margin-top:5px">獎金發放通知</div>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:none;padding:20px 24px;border-radius:0 0 10px 10px;background:white">
+    <p style="font-size:14px;color:#374151">親愛的 <strong>${data.recipient||''}</strong> 您好，</p>
+    <p style="font-size:14px;color:#374151">您的獎金已完成發放，明細如下：</p>
+    <div style="background:#e8f5e9;border-radius:10px;padding:16px 20px;margin:16px 0;text-align:center">
+      <div style="font-size:36px;font-weight:900;color:#1b5e20">NT$ ${amt.toLocaleString()}</div>
+      <div style="font-size:13px;color:#2e7d32;margin-top:4px">${data.bonusType||''}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr><td style="padding:5px 0;color:#6b7280;width:80px">物件地址</td><td style="font-weight:600">${data.address||''}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280">角色</td><td>${data.role||''}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280">發放人</td><td>${data.paidBy||''}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280">發放時間</td><td>${new Date().toLocaleString('zh-TW')}</td></tr>
+    </table>
+    <p style="font-size:12px;color:#9ca3af;margin-top:20px;text-align:center">如有任何問題請聯繫禾大屋管 · changpaiwang@gmail.com</p>
+  </div>
+</div>`;
+      MailApp.sendEmail({ to: data.recipientEmail, cc: NOTIFY_EMAIL, subject, htmlBody });
+    } catch(err) { Logger.log("Pay bonus email error: " + err); }
   }
 }
 

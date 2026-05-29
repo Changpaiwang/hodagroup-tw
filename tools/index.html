@@ -1103,7 +1103,37 @@ function renderSCDone() {
 /* ════════════════════════════════
    物件台帳登錄 (PropertyRegistry)
 ════════════════════════════════ */
-let propState = { property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代管",signDate:new Date().toISOString().slice(0,10),contractYears:"2",rentAmount:"",mgmtFee:"",marketRent:"",hodaRent:"",referrer:"",manager:"",note:""}, submitted:false };
+let propState = { property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代管",signDate:new Date().toISOString().slice(0,10),contractYears:"2",rentAmount:"",mgmtFee:"",marketRent:"",hodaRent:"",referrer:"",referrerEmail:"",manager:"",managerEmail:"",note:""}, submitted:false };
+
+function calcBonusPreview(p) {
+  const items = [];
+  const fee    = parseInt(p.mgmtFee)||0;
+  const spread = (parseInt(p.marketRent)||0) - (parseInt(p.hodaRent)||0);
+  const baseFee = fee || parseInt(p.rentAmount)||0;
+  const years  = parseInt(p.contractYears)||2;
+  const addMo  = (m) => { const d=new Date(p.signDate||new Date()); d.setMonth(d.getMonth()+m); return d.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'}); };
+  if (p.referrer) {
+    if (p.mgmtType==="代管" && fee) {
+      const t = Math.round(fee*0.5);
+      items.push({who:p.referrer,role:'引薦人',type:'代管引薦 首期',date:addMo(0),amt:Math.round(t*0.4)});
+      items.push({who:p.referrer,role:'引薦人',type:'代管引薦 第6月',date:addMo(6),amt:Math.round(t*0.3)});
+      items.push({who:p.referrer,role:'引薦人',type:'代管引薦 第12月',date:addMo(12),amt:Math.round(t*0.3)});
+    } else if (p.mgmtType==="包租" && spread>0) {
+      items.push({who:p.referrer,role:'引薦人',type:'包租引薦 簽約時',date:addMo(0),amt:spread});
+      items.push({who:p.referrer,role:'引薦人',type:'包租引薦 第6月',date:addMo(6),amt:spread});
+    }
+    for(let y=1;y<=years;y++) items.push({who:p.referrer,role:'引薦人',type:`感謝禮(第${y}年)`,date:addMo(y*12),amt:1500});
+  }
+  if (p.manager && baseFee) {
+    const mb = Math.round(baseFee*0.15);
+    for(let m=0;m<years*12;m+=6) items.push({who:p.manager,role:'管理人員',type:`月度佣金 月${m+1}~${m+6}`,date:addMo(m+6),amt:mb*6});
+    for(let y=1;y<=years;y++) {
+      items.push({who:p.manager,role:'管理人員',type:`感謝禮A(第${y}年)`,date:addMo(y*12-6),amt:1500});
+      items.push({who:p.manager,role:'管理人員',type:`感謝禮B(第${y}年)`,date:addMo(y*12),amt:1500});
+    }
+  }
+  return items;
+}
 
 function renderPropertyRegistry() {
   currentView = "property";
@@ -1189,15 +1219,28 @@ function renderPropertyRegistry() {
 
       <div class="card">
         <div class="card-title"><i class="ti ti-users-group"></i>引薦 / 管理人員 <span style="font-size:11px;font-weight:400;color:var(--hint)">(選填)</span></div>
-        <div class="field">
-          <div class="field-label">引薦人姓名</div>
-          <div style="font-size:11px;color:var(--hint);margin-bottom:5px">帶來此物件簽約機會的人</div>
-          <input type="text" data-key="referrer" value="${p.referrer||''}" placeholder="姓名（留空代表無引薦人）">
+        <div style="background:#f0f7ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#1565c0;margin-bottom:12px">
+          填入 Email 後，Frank 發放獎金時系統會<strong>自動通知當事人</strong>，並副本給禾大屋管
         </div>
-        <div class="field">
-          <div class="field-label">負責管理人員</div>
-          <div style="font-size:11px;color:var(--hint);margin-bottom:5px">日後負責日常管理此物件的業務</div>
-          <input type="text" data-key="manager" value="${p.manager||''}" placeholder="姓名（留空代表尚未指派）">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:2px">
+          <div class="field" style="margin-top:0">
+            <div class="field-label">引薦人姓名</div>
+            <input type="text" data-key="referrer" value="${p.referrer||''}" placeholder="姓名">
+          </div>
+          <div class="field" style="margin-top:0">
+            <div class="field-label">引薦人 Email</div>
+            <input type="email" data-key="referrerEmail" value="${p.referrerEmail||''}" placeholder="email@example.com" style="letter-spacing:0">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0">
+            <div class="field-label">管理人員姓名</div>
+            <input type="text" data-key="manager" value="${p.manager||''}" placeholder="姓名">
+          </div>
+          <div class="field" style="margin-top:0">
+            <div class="field-label">管理人員 Email</div>
+            <input type="email" data-key="managerEmail" value="${p.managerEmail||''}" placeholder="email@example.com" style="letter-spacing:0">
+          </div>
         </div>
         <div class="field"><div class="field-label">備注</div><textarea data-key="note" placeholder="其他注意事項...">${p.note||''}</textarea></div>
       </div>
@@ -1270,19 +1313,53 @@ function renderPropertyRegistry() {
 
 function renderPropDone() {
   const p = propState.property;
+  const items = calcBonusPreview(p);
+  const total = items.reduce((s,i)=>s+i.amt,0);
+  const tableRows = items.map(i=>`<tr>
+    <td style="padding:6px 10px;font-size:12px;color:var(--navy);font-weight:600">${i.who}</td>
+    <td style="padding:6px 10px;font-size:11px;color:${i.role==='引薦人'?'#7e22ce':'#1565c0'};font-weight:700">${i.role}</td>
+    <td style="padding:6px 10px;font-size:12px;color:#374151">${i.type}</td>
+    <td style="padding:6px 10px;font-size:12px;color:var(--hint)">${i.date}</td>
+    <td style="padding:6px 10px;font-size:12px;font-weight:700;text-align:right;color:var(--navy)">NT$${i.amt.toLocaleString()}</td>
+  </tr>`).join('');
+
   setHTML(`
     <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">台帳登錄完成</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
-    <div class="page" style="padding-top:40px;text-align:center">
-      <div style="width:80px;height:80px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px"><i class="ti ti-check" style="font-size:40px;color:#2e7d32"></i></div>
-      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">物件已登錄！</div>
-      <div style="font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:24px"><strong>${p.address||'物件'}</strong><br>獎金排程已自動建立<br>Email 通知已發送</div>
-      ${p.referrer?`<div style="background:#f3e8ff;border-radius:10px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#7e22ce">引薦人 <strong>${p.referrer}</strong> 的獎金排程已建立</div>`:''}
-      ${p.manager?`<div style="background:#e3f2fd;border-radius:10px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#1565c0">管理人員 <strong>${p.manager}</strong> 的獎金排程已建立</div>`:''}
-      <button class="btn-primary" id="prop-new" style="margin-top:10px"><i class="ti ti-plus" style="font-size:17px"></i>登錄下一個物件</button>
-      <button class="btn-secondary" id="prop-bonus" style="width:100%;margin-top:10px"><i class="ti ti-cash" style="font-size:15px"></i>查看獎金儀表板</button>
+    <div class="page" style="padding-top:24px">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="width:64px;height:64px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><i class="ti ti-check" style="font-size:32px;color:#2e7d32"></i></div>
+        <div style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:4px">物件已登錄！</div>
+        <div style="font-size:13px;color:var(--muted)">${p.address||'物件'} · ${p.mgmtType}</div>
+      </div>
+
+      ${items.length ? `
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="background:var(--navy);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:700;color:white"><i class="ti ti-calendar-check" style="margin-right:6px"></i>已生成獎金排程（${items.length} 筆）</span>
+          <span style="font-size:14px;font-weight:900;color:var(--gold)">NT$${total.toLocaleString()}</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#f9f9f9">
+              <th style="padding:6px 10px;font-size:11px;color:var(--muted);font-weight:600;text-align:left">姓名</th>
+              <th style="padding:6px 10px;font-size:11px;color:var(--muted);font-weight:600;text-align:left">角色</th>
+              <th style="padding:6px 10px;font-size:11px;color:var(--muted);font-weight:600;text-align:left">類型</th>
+              <th style="padding:6px 10px;font-size:11px;color:var(--muted);font-weight:600;text-align:left">發放日</th>
+              <th style="padding:6px 10px;font-size:11px;color:var(--muted);font-weight:600;text-align:right">金額</th>
+            </tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+        <div style="padding:10px 16px;font-size:11px;color:var(--hint);background:#f9f9f9">
+          以上為預估金額，實際依簽約費率計算。發放時系統自動寄 Email 通知。
+        </div>
+      </div>` : `<div class="card" style="text-align:center;color:var(--muted);font-size:13px;padding:20px">未設定引薦人或管理人員，無獎金排程</div>`}
+
+      <button class="btn-primary" id="prop-bonus" style="margin-top:6px"><i class="ti ti-cash" style="font-size:17px"></i>前往獎金儀表板</button>
+      <button class="btn-secondary" id="prop-new" style="width:100%;margin-top:10px"><i class="ti ti-plus" style="font-size:15px"></i>登錄下一個物件</button>
       <button class="btn-secondary" id="prop-dash" style="width:100%;margin-top:10px"><i class="ti ti-home" style="font-size:15px"></i>回首頁</button>
     </div>`);
-  app.querySelector("#prop-new").addEventListener("click", () => { propState={property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代管",signDate:new Date().toISOString().slice(0,10),contractYears:"2",rentAmount:"",mgmtFee:"",marketRent:"",hodaRent:"",referrer:"",manager:"",note:""},submitted:false}; renderPropertyRegistry(); });
+  app.querySelector("#prop-new").addEventListener("click", () => { propState={property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代管",signDate:new Date().toISOString().slice(0,10),contractYears:"2",rentAmount:"",mgmtFee:"",marketRent:"",hodaRent:"",referrer:"",referrerEmail:"",manager:"",managerEmail:"",note:""},submitted:false}; renderPropertyRegistry(); });
   app.querySelector("#prop-bonus").addEventListener("click", renderBonusDashboard);
   app.querySelector("#prop-dash").addEventListener("click", renderDashboard);
 }
@@ -1315,12 +1392,23 @@ async function renderBonusDashboard() {
 
   const listEl = document.getElementById("bonus-list");
   if (!listEl) return;
+  const sheetsUrl = `https://docs.google.com/spreadsheets/d/1HsnhjNh6cDtM7mBrHIiy0SAu7Il08WqtnL1pgkXYS8E/edit#gid=0`;
   if (!rows.length) {
-    listEl.innerHTML = `<div class="hist-empty"><i class="ti ti-mood-smile" style="font-size:36px;display:block;margin-bottom:12px"></i>目前無待發放獎金<br>60天內無到期項目</div>`;
+    listEl.innerHTML = `<div class="hist-empty"><i class="ti ti-mood-smile" style="font-size:36px;display:block;margin-bottom:12px"></i>目前無待發放獎金<br><a href="${sheetsUrl}" target="_blank" style="font-size:13px;color:var(--navy);margin-top:12px;display:inline-block">開啟 Google Sheets 查看完整記錄 ↗</a></div>`;
     return;
   }
+  const nowDt = new Date();
+  const overdueCount = rows.filter(r => new Date(r['預計發放日']) < nowDt).length;
+  const totalAmt = rows.reduce((s,r)=>s+(parseInt(r['金額(NT$)'])||0),0);
   const now = new Date();
-  listEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">共 ${rows.length} 筆待發放，點選可標記已發放</div>` +
+  listEl.innerHTML = `
+    <div style="background:var(--navy);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:12px;color:rgba(255,255,255,0.6)">共 ${rows.length} 筆待發放</div>${overdueCount?`<div style="font-size:12px;color:#ff8a80;font-weight:700;margin-top:2px">⚠ ${overdueCount} 筆已逾期</div>`:''}</div>
+      <div style="text-align:right"><div style="font-size:10px;color:var(--gold);letter-spacing:1px">合計金額</div><div style="font-size:18px;font-weight:900;color:var(--gold)">NT$${totalAmt.toLocaleString()}</div></div>
+    </div>
+    <a href="${sheetsUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;border:1.5px solid #d1d5db;background:white;color:var(--muted);font-size:13px;font-weight:600;text-decoration:none;margin-bottom:14px">
+      <i class="ti ti-table" style="font-size:14px"></i>開啟 Google Sheets 完整記錄 ↗
+    </a>` +
     rows.map((row, idx) => {
       const due = new Date(row['預計發放日']);
       const diff = Math.round((due - now) / 86400000);
@@ -1351,7 +1439,7 @@ async function renderBonusDashboard() {
     const row = rows[idx];
     if (!confirm(`確認已發放 NT$${(parseInt(row['金額(NT$)'])||0).toLocaleString()} 給 ${row['受益人']}？`)) return;
     btn.textContent = "發放中..."; btn.disabled = true;
-    await postToSheets("pay_bonus", { address: row['物件地址'], recipient: row['受益人'], role: row['角色'], bonusType: row['獎金類型'], amount: parseInt(row['金額(NT$)'])||0, paidBy: session.user, _rowIndex: row._rowIndex });
+    await postToSheets("pay_bonus", { address: row['物件地址'], recipient: row['受益人'], recipientEmail: row['受益人Email']||"", role: row['角色'], bonusType: row['獎金類型'], amount: parseInt(row['金額(NT$)'])||0, paidBy: session.user, _rowIndex: row._rowIndex });
     renderBonusDashboard();
   }));
 }
