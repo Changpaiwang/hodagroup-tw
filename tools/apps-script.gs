@@ -1,27 +1,34 @@
 // ═══════════════════════════════════════════════════════════
-//  禾大屋管 業務工具系統 - Google Apps Script 後端  v2.0
-//  新增：Email通知、查詢API、補正更新
+//  禾大屋管 業務工具系統 - Google Apps Script 後端  v3.0
+//  新增：物件台帳、獎金排程、系統參數管理
 // ═══════════════════════════════════════════════════════════
 
-const NOTIFY_EMAIL    = "changpaiwang@gmail.com";
-const SPREADSHEET_ID  = "1HsnhjNh6cDtM7mBrHIiy0SAu7Il08WqtnL1pgkXYS8E";
-const SHEET_CHECKLIST = "勘查清單";
-const SHEET_SCORING   = "物件評分";
-const SHEET_LOG       = "操作記錄";
+const NOTIFY_EMAIL         = "changpaiwang@gmail.com";
+const SPREADSHEET_ID       = "1HsnhjNh6cDtM7mBrHIiy0SAu7Il08WqtnL1pgkXYS8E";
+const SHEET_CHECKLIST      = "勘查清單";
+const SHEET_SCORING        = "物件評分";
+const SHEET_PROPERTY       = "物件台帳";
+const SHEET_BONUS_SCHEDULE = "獎金排程";
+const SHEET_BONUS_RECORD   = "獎金記錄";
+const SHEET_PARAMS         = "系統參數";
+const SHEET_LOG            = "操作記錄";
 
 // ─── POST 主入口 ───
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     const ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
-    let isUpdate = false;
+    let logType = null;
 
-    if      (data.type === "checklist")        { saveChecklist(ss, data);   sendChecklistEmail(data, false); }
-    else if (data.type === "scoring")          { saveScoring(ss, data);     sendScoringEmail(data, false);   }
-    else if (data.type === "update_checklist") { updateChecklist(ss, data); sendChecklistEmail(data, true);  isUpdate = true; }
-    else if (data.type === "update_scoring")   { updateScoring(ss, data);   sendScoringEmail(data, true);    isUpdate = true; }
+    if      (data.type === "checklist")        { saveChecklist(ss, data);   sendChecklistEmail(data, false); logType = "checklist"; }
+    else if (data.type === "scoring")          { saveScoring(ss, data);     sendScoringEmail(data, false);   logType = "scoring"; }
+    else if (data.type === "update_checklist") { updateChecklist(ss, data); sendChecklistEmail(data, true); }
+    else if (data.type === "update_scoring")   { updateScoring(ss, data);   sendScoringEmail(data, true); }
+    else if (data.type === "property")         { saveProperty(ss, data);    sendPropertyEmail(data);         logType = "property"; }
+    else if (data.type === "pay_bonus")        { payBonus(ss, data); }
+    else if (data.type === "update_params")    { saveParams(ss, data); }
 
-    if (!isUpdate) saveLog(ss, data.type, data.appraiser || "未知", data.submittedAt);
+    if (logType) saveLog(ss, logType, data.appraiser || data.registrar || "未知", data.submittedAt);
 
     return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -29,13 +36,17 @@ function doPost(e) {
   }
 }
 
-// ─── GET：健康檢查 + 列表查詢 ───
+// ─── GET：健康檢查 + 各類查詢 ───
 function doGet(e) {
   const params = e.parameter || {};
-  if (params.action === "list") return listRows(params.sheet || "checklist");
-  return ContentService.createTextOutput(JSON.stringify({ status: "ok", version: "2.0" })).setMimeType(ContentService.MimeType.JSON);
+  if (params.action === "list")            return listRows(params.sheet || "checklist");
+  if (params.action === "bonus_dashboard") return listBonusDashboard();
+  if (params.action === "params")          return getParams();
+  if (params.action === "property_list")   return listProperties();
+  return ContentService.createTextOutput(JSON.stringify({ status: "ok", version: "3.0" })).setMimeType(ContentService.MimeType.JSON);
 }
 
+// ─── 列表查詢（勘查清單 / 評分） ───
 function listRows(sheetType) {
   const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   const name  = sheetType === "checklist" ? SHEET_CHECKLIST : SHEET_SCORING;
@@ -66,7 +77,8 @@ function saveChecklist(ss, data) {
       "有無租客","每月租金","押金",
       "漏水壁癌","最近維修","鑰匙數量","門禁卡數量",
       "整體完成度 (%)","各區備注",
-      "一、屋主身份","二、房屋基本","三、出租狀況","四、收支費用","五、屋況設備","六、代管條件","七、現場交接"
+      "一、屋主身份","二、房屋基本","三、出租狀況","四、收支費用","五、屋況設備","六、代管條件","七、現場交接",
+      "引薦人","管理人員"
     ]);
     sheet.getRange(1,1,1,sheet.getLastColumn()).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
     sheet.setFrozenRows(1);
@@ -103,7 +115,8 @@ function buildChecklistRow(data) {
     f.hasTenants||"", f.monthlyRent||"", f.deposit||"",
     f.leakStatus||"", f.lastRepair||"", f.keyCount||"", f.cardCount||"",
     pct + "%", notes,
-    detail[0]||"", detail[1]||"", detail[2]||"", detail[3]||"", detail[4]||"", detail[5]||"", detail[6]||""
+    detail[0]||"", detail[1]||"", detail[2]||"", detail[3]||"", detail[4]||"", detail[5]||"", detail[6]||"",
+    l.referrer||"", l.manager||""
   ];
 }
 
@@ -158,23 +171,238 @@ function colorScoringRow(sheet, rowNum, score) {
   sheet.getRange(rowNum, 8).setBackground(bg);
 }
 
+// ─── 物件台帳 ───
+function saveProperty(ss, data) {
+  let sheet = ss.getSheetByName(SHEET_PROPERTY);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PROPERTY);
+    sheet.appendRow([
+      "登錄時間","登錄人","物件地址","屋主姓名","屋主電話",
+      "管理方式","簽約日期","合約年限(年)","合約到期日",
+      "月租金(NT$)","代管費(NT$)","市場月租(NT$)","禾大收租(NT$)","月價差(NT$)",
+      "引薦人","管理人員","備注","物件ID"
+    ]);
+    sheet.getRange(1,1,1,sheet.getLastColumn()).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
+    sheet.setFrozenRows(1);
+  }
+
+  const propId   = "P" + new Date().getTime();
+  const p        = data.property || {};
+  const signDate = new Date(p.signDate || new Date());
+  const years    = parseInt(p.contractYears) || 1;
+  const expDate  = new Date(signDate); expDate.setFullYear(expDate.getFullYear() + years);
+  const spread   = (parseInt(p.marketRent)||0) - (parseInt(p.hodaRent)||0);
+
+  sheet.appendRow([
+    new Date(), data.registrar || "",
+    p.address||"", p.ownerName||"", p.ownerPhone||"",
+    p.mgmtType||"", signDate, years, expDate,
+    p.rentAmount||"", p.mgmtFee||"", p.marketRent||"", p.hodaRent||"",
+    spread > 0 ? spread : "",
+    p.referrer||"", p.manager||"", p.note||"", propId
+  ]);
+
+  const params = getParamsObj(ss);
+  generateBonusSchedule(ss, p, propId, signDate, params);
+}
+
+// ─── 獎金排程自動生成 ───
+function generateBonusSchedule(ss, p, propId, signDate, params) {
+  let sheet = ss.getSheetByName(SHEET_BONUS_SCHEDULE);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_BONUS_SCHEDULE);
+    sheet.appendRow([
+      "建立時間","物件地址","物件ID","受益人","角色","獎金類型",
+      "預計發放日","金額(NT$)","狀態","發放日期","發放人","備注"
+    ]);
+    sheet.getRange(1,1,1,sheet.getLastColumn()).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
+    sheet.setFrozenRows(1);
+  }
+
+  const addr     = p.address || "";
+  const now      = new Date();
+  const years    = parseInt(p.contractYears) || 1;
+  const addMo    = (d, m) => { const n = new Date(d); n.setMonth(n.getMonth() + m); return n; };
+  const entries  = [];
+
+  // ── 引薦人獎金 ──
+  if (p.referrer) {
+    if (p.mgmtType === "代管") {
+      const fee   = parseInt(p.mgmtFee) || 0;
+      const total = Math.round(fee * (params.daimgmtRefRate || 0.5));
+      entries.push([now, addr, propId, p.referrer, "引薦人", "代管引薦-首期(40%)",  addMo(signDate, 0),  Math.round(total * (params.daimgmtRef1 || 0.4)), "待發放","","",""]);
+      entries.push([now, addr, propId, p.referrer, "引薦人", "代管引薦-第6月(30%)", addMo(signDate, 6),  Math.round(total * (params.daimgmtRef2 || 0.3)), "待發放","","",""]);
+      entries.push([now, addr, propId, p.referrer, "引薦人", "代管引薦-第12月(30%)",addMo(signDate, 12), Math.round(total * (params.daimgmtRef3 || 0.3)), "待發放","","",""]);
+    } else if (p.mgmtType === "包租") {
+      const spread = (parseInt(p.marketRent)||0) - (parseInt(p.hodaRent)||0);
+      if (spread > 0) {
+        entries.push([now, addr, propId, p.referrer, "引薦人", "包租引薦-簽約時", signDate,            spread * (params.baozuRef1 || 1), "待發放","","",""]);
+        entries.push([now, addr, propId, p.referrer, "引薦人", "包租引薦-第6月",  addMo(signDate, 6),  spread * (params.baozuRef2 || 1), "待發放","","",""]);
+      }
+    }
+    // 感謝禮：引薦人 1次/年
+    for (let y = 1; y <= years; y++) {
+      entries.push([now, addr, propId, p.referrer, "引薦人", `感謝禮(第${y}年)`, addMo(signDate, y * 12), params.thanksGiftAmount || 1500, "待發放","","",""]);
+    }
+  }
+
+  // ── 管理人員獎金 ──
+  if (p.manager) {
+    const fee         = parseInt(p.mgmtFee) || parseInt(p.rentAmount) || 0;
+    const rate        = params.managerBaseRate || 0.15;
+    const monthlyBonus = Math.round(fee * rate);
+    // Semi-annual summary entries
+    for (let m = 0; m < years * 12; m += 6) {
+      entries.push([now, addr, propId, p.manager, "管理人員", `月度佣金(第${m+1}~${m+6}月)`,
+        addMo(signDate, m + 6), monthlyBonus * 6, "待發放","","", `NT$${monthlyBonus}/月 × 6`]);
+    }
+    // 感謝禮：管理人員 2次/年
+    for (let y = 1; y <= years; y++) {
+      entries.push([now, addr, propId, p.manager, "管理人員", `感謝禮A(第${y}年)`, addMo(signDate, y*12-6), params.thanksGiftAmount || 1500, "待發放","","",""]);
+      entries.push([now, addr, propId, p.manager, "管理人員", `感謝禮B(第${y}年)`, addMo(signDate, y*12),   params.thanksGiftAmount || 1500, "待發放","","",""]);
+    }
+  }
+
+  entries.forEach(row => sheet.appendRow(row));
+}
+
+// ─── 獎金儀表板（30天內到期 + 逾期） ───
+function listBonusDashboard() {
+  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_BONUS_SCHEDULE);
+  if (!sheet || sheet.getLastRow() < 2) return ContentService.createTextOutput(JSON.stringify({ rows: [] })).setMimeType(ContentService.MimeType.JSON);
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const now     = new Date();
+
+  const rows = data.slice(1).map((row, i) => {
+    const obj = { _rowIndex: i + 2 };
+    headers.forEach((h, j) => { obj[h] = row[j] instanceof Date ? row[j].toISOString() : row[j]; });
+    return obj;
+  }).filter(r => {
+    if (r['狀態'] === '已發放') return false;
+    const dueDate  = new Date(r['預計發放日']);
+    const diffDays = (dueDate - now) / (1000 * 60 * 60 * 24);
+    return diffDays <= 60;
+  }).sort((a, b) => new Date(a['預計發放日']) - new Date(b['預計發放日']));
+
+  return ContentService.createTextOutput(JSON.stringify({ rows })).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ─── 物件列表 ───
+function listProperties() {
+  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_PROPERTY);
+  if (!sheet || sheet.getLastRow() < 2) return ContentService.createTextOutput(JSON.stringify({ rows: [] })).setMimeType(ContentService.MimeType.JSON);
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows    = data.slice(1).map((row, i) => {
+    const obj = { _rowIndex: i + 2 };
+    headers.forEach((h, j) => { obj[h] = row[j] instanceof Date ? row[j].toISOString() : row[j]; });
+    return obj;
+  }).reverse();
+
+  return ContentService.createTextOutput(JSON.stringify({ rows })).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ─── 發放獎金 ───
+function payBonus(ss, data) {
+  let recSheet = ss.getSheetByName(SHEET_BONUS_RECORD);
+  if (!recSheet) {
+    recSheet = ss.insertSheet(SHEET_BONUS_RECORD);
+    recSheet.appendRow(["發放時間","物件地址","受益人","角色","獎金類型","金額(NT$)","發放人","備注"]);
+    recSheet.getRange(1,1,1,8).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
+    recSheet.setFrozenRows(1);
+  }
+  recSheet.appendRow([
+    new Date(), data.address||"", data.recipient||"", data.role||"",
+    data.bonusType||"", data.amount||0, data.paidBy||"", data.note||""
+  ]);
+
+  const schedSheet = ss.getSheetByName(SHEET_BONUS_SCHEDULE);
+  if (schedSheet && data._rowIndex) {
+    schedSheet.getRange(data._rowIndex, 9).setValue("已發放");
+    schedSheet.getRange(data._rowIndex, 10).setValue(new Date());
+    schedSheet.getRange(data._rowIndex, 11).setValue(data.paidBy || "");
+    schedSheet.getRange(data._rowIndex, 9).setBackground("#e8f5e9");
+  }
+}
+
+// ─── 系統參數 ───
+function getDefaultParams() {
+  return {
+    daimgmtRefRate:       0.5,
+    daimgmtRef1:          0.4,
+    daimgmtRef2:          0.3,
+    daimgmtRef3:          0.3,
+    baozuRef1:            1,
+    baozuRef2:            1,
+    managerBaseRate:      0.15,
+    managerMidRate:       0.20,
+    managerHighRate:      0.25,
+    managerBasePropCount: 5,
+    managerMidPropCount:  10,
+    thanksGiftAmount:     1500,
+    thanksGiftReferrer:   1,
+    thanksGiftManager:    2,
+  };
+}
+
+function getParamsObj(ss) {
+  const sheet = ss.getSheetByName(SHEET_PARAMS);
+  const p     = getDefaultParams();
+  if (!sheet || sheet.getLastRow() < 2) return p;
+  sheet.getDataRange().getValues().slice(1).forEach(row => {
+    if (row[0]) p[row[0]] = isNaN(row[1]) ? row[1] : parseFloat(row[1]);
+  });
+  return p;
+}
+
+function getParams() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return ContentService.createTextOutput(JSON.stringify({ params: getParamsObj(ss) })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveParams(ss, data) {
+  let sheet = ss.getSheetByName(SHEET_PARAMS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PARAMS);
+    sheet.appendRow(["參數鍵值","數值","說明","更新時間","更新人"]);
+    sheet.getRange(1,1,1,5).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
+    sheet.setFrozenRows(1);
+  }
+  if (sheet.getLastRow() > 1) sheet.deleteRows(2, sheet.getLastRow() - 1);
+
+  const labels = {
+    daimgmtRefRate:"代管引薦費率(首月管理費×比例)",
+    daimgmtRef1:"代管引薦-第0月分配比例",daimgmtRef2:"代管引薦-第6月分配比例",daimgmtRef3:"代管引薦-第12月分配比例",
+    baozuRef1:"包租引薦-簽約時月差額倍率",baozuRef2:"包租引薦-第6月月差額倍率",
+    managerBaseRate:"管理員月費率(1-N件)",managerMidRate:"管理員月費率(中等)",managerHighRate:"管理員月費率(高等)",
+    managerBasePropCount:"基本級件數上限",managerMidPropCount:"中等級件數上限",
+    thanksGiftAmount:"感謝禮金額(NT$)",thanksGiftReferrer:"感謝禮-引薦人次數/年",thanksGiftManager:"感謝禮-管理員次數/年",
+  };
+  Object.entries(data.params || {}).forEach(([k, v]) => {
+    sheet.appendRow([k, v, labels[k]||"", new Date(), data.updatedBy||""]);
+  });
+}
+
 // ─── Email：勘查清單 ───
 function sendChecklistEmail(data, isUpdate) {
   try {
     const l = data.landlord||{}, f = data.fields||{}, sec = data.sections||[];
     let checked=0, total=0;
     sec.forEach(s=>{ checked+=s.items.filter(i=>i.checked).length; total+=s.items.length; });
-    const pct = total>0?Math.round(checked/total*100):0;
+    const pct    = total>0?Math.round(checked/total*100):0;
     const pColor = pct===100?"#2e7d32":pct>=70?"#e65100":"#c62828";
     const pBg    = pct===100?"#e8f5e9":pct>=70?"#fff8e1":"#ffebee";
-
     const secRows = sec.map(s=>{
       const c=s.items.filter(i=>i.checked).length;
       return `<tr><td style="padding:4px 10px;font-size:12px;color:#374151;border-bottom:1px solid #f3f4f6">${s.title}</td>
               <td style="padding:4px 10px;font-size:12px;font-weight:700;text-align:right;border-bottom:1px solid #f3f4f6;color:${c===s.items.length?'#2e7d32':'#e65100'}">${c}/${s.items.length}</td>
               ${s.notes?`<td style="padding:4px 10px;font-size:11px;color:#9ca3af;border-bottom:1px solid #f3f4f6">${s.notes}</td>`:'<td style="border-bottom:1px solid #f3f4f6"></td>'}</tr>`;
     }).join('');
-
     const subject = `[禾大${isUpdate?'補正':'勘查'}] ${l.address||'未填地址'} — ${data.appraiser||''} (${pct}%)`;
     const htmlBody = `<div style="font-family:-apple-system,sans-serif;max-width:580px;margin:0 auto">
   <div style="background:#1B3A5C;padding:20px 24px;border-radius:10px 10px 0 0">
@@ -188,7 +416,8 @@ function sendChecklistEmail(data, isUpdate) {
       <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">物件地址</td><td style="padding:5px 0;font-weight:700">${l.address||''}</td></tr>
       <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">屋主</td><td style="padding:5px 0">${l.name||''} ${l.phone?'· '+l.phone:''} ${l.line?'· LINE '+l.line:''}</td></tr>
       <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">管理方式</td><td style="padding:5px 0">${f.mgmtType||'—'}</td></tr>
-      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">期待月租</td><td style="padding:5px 0">${f.expectedRent?'NT$ '+f.expectedRent:'—'}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">引薦人</td><td style="padding:5px 0">${l.referrer||'—'}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">管理人員</td><td style="padding:5px 0">${l.manager||'—'}</td></tr>
     </table>
     <div style="background:${pBg};border-radius:10px;padding:14px 20px;margin-bottom:18px;display:flex;align-items:center;gap:18px">
       <div style="font-size:36px;font-weight:900;color:${pColor};line-height:1">${pct}%</div>
@@ -208,10 +437,8 @@ function sendScoringEmail(data, isUpdate) {
     const info=data.info||{}, sec=data.sections||[], score=data.score||0, rec=data.recommendation||"";
     const sColor=score>=90?"#2e7d32":score>=85?"#1565c0":score>=80?"#e65100":score>=70?"#bf360c":"#c62828";
     const sBg   =score>=90?"#e8f5e9":score>=85?"#e3f2fd":score>=80?"#fff3e0":score>=70?"#fbe9e7":"#ffebee";
-
     const secRows=sec.map(s=>`<tr><td style="padding:4px 10px;font-size:12px;color:#374151;border-bottom:1px solid #f3f4f6">${s.title}</td>
       <td style="padding:4px 10px;font-size:12px;font-weight:700;text-align:right;border-bottom:1px solid #f3f4f6;color:${Math.round(s.score/s.maxScore*100)>=70?'#2e7d32':'#e65100'}">${s.score}/${s.maxScore}</td></tr>`).join('');
-
     const subject=`[禾大${isUpdate?'補正':'評分'}] ${info.address||'未填地址'} — ${score}分 ${rec}`;
     const htmlBody=`<div style="font-family:-apple-system,sans-serif;max-width:580px;margin:0 auto">
   <div style="background:#1B3A5C;padding:20px 24px;border-radius:10px 10px 0 0">
@@ -238,6 +465,34 @@ function sendScoringEmail(data, isUpdate) {
   } catch(err) { Logger.log("Email error: "+err); }
 }
 
+// ─── Email：物件台帳 ───
+function sendPropertyEmail(data) {
+  try {
+    const p = data.property || {};
+    const subject = `[禾大台帳] ${p.address||'未填地址'} 已登錄 — ${p.mgmtType||''} 引薦：${p.referrer||'無'} 管理：${p.manager||'無'}`;
+    const htmlBody = `<div style="font-family:-apple-system,sans-serif;max-width:580px;margin:0 auto">
+  <div style="background:#1B3A5C;padding:20px 24px;border-radius:10px 10px 0 0">
+    <div style="font-size:10px;color:#C9A84C;letter-spacing:3px;font-weight:700">禾大屋管 HODA</div>
+    <div style="font-size:20px;font-weight:900;color:white;margin-top:5px">物件台帳登錄通知</div>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:none;padding:20px 24px;border-radius:0 0 10px 10px;background:white">
+    <table style="width:100%;border-collapse:collapse">
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px;width:100px">物件地址</td><td style="font-weight:700">${p.address||''}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">屋主</td><td>${p.ownerName||''} ${p.ownerPhone?'· '+p.ownerPhone:''}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">管理方式</td><td>${p.mgmtType||''}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">簽約日期</td><td>${p.signDate||''}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">合約年限</td><td>${p.contractYears||''}年</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">引薦人</td><td style="font-weight:700;color:#7e22ce">${p.referrer||'無'}</td></tr>
+      <tr><td style="padding:5px 0;color:#6b7280;font-size:13px">管理人員</td><td style="font-weight:700;color:#1565c0">${p.manager||'無'}</td></tr>
+    </table>
+    <div style="margin-top:14px;background:#e8f5e9;border-radius:8px;padding:12px;font-size:12px;color:#2e7d32">✓ 獎金排程已自動生成，請至禾大後台試算表查看「獎金排程」分頁</div>
+    <div style="margin-top:16px;font-size:11px;color:#9ca3af;text-align:center">禾大屋管業務工具系統 · ${new Date().toLocaleString('zh-TW')}</div>
+  </div>
+</div>`;
+    MailApp.sendEmail({ to: NOTIFY_EMAIL, subject, htmlBody });
+  } catch(err) { Logger.log("Email error: "+err); }
+}
+
 // ─── 操作記錄 ───
 function saveLog(ss, type, user, time) {
   let sheet = ss.getSheetByName(SHEET_LOG);
@@ -246,5 +501,13 @@ function saveLog(ss, type, user, time) {
     sheet.appendRow(["時間","類型","業務"]);
     sheet.getRange(1,1,1,3).setFontWeight("bold");
   }
-  sheet.appendRow([new Date(time||new Date()), type==="checklist"?"勘查清單":"物件評分", user]);
+  const typeLabel = {checklist:"勘查清單",scoring:"物件評分",property:"物件台帳"}[type] || type;
+  sheet.appendRow([new Date(time || new Date()), typeLabel, user]);
+}
+
+// ─── 測試函數 ───
+function testSetup() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  Logger.log("Spreadsheet name: " + ss.getName());
+  Logger.log("Version: 3.0 OK");
 }

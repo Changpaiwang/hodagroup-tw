@@ -242,6 +242,22 @@ textarea { resize: none; height: 68px; line-height: 1.5; }
 .detail-key { color:var(--muted); flex-shrink:0; margin-right:12px; }
 .detail-val { text-align:right; font-weight:500; color:#1a1a1a; word-break:break-all; }
 .edit-banner { background:#f3e8ff; border:1px solid #d8b4fe; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#7e22ce; display:flex; align-items:center; gap:8px; }
+.tool-icon-4 { background:#e8f5e9; color:#1b5e20; }
+.tool-icon-5 { background:#fce4ec; color:#880e4f; }
+.tool-icon-6 { background:#fff8e1; color:#e65100; }
+.admin-badge { background:var(--gold); color:var(--navy); font-size:10px; font-weight:800; padding:2px 8px; border-radius:20px; letter-spacing:1px; }
+.autosave-banner { background:#e8f5e9; border:1px solid #a5d6a7; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#2e7d32; display:flex; align-items:center; gap:8px; }
+.bonus-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:all 0.15s; }
+.bonus-card:active { transform:scale(0.98); }
+.bonus-overdue { border-left:4px solid #c62828; }
+.bonus-soon { border-left:4px solid #ff9800; }
+.bonus-future { border-left:4px solid var(--gold); }
+.bonus-paid { border-left:4px solid #4caf50; opacity:0.6; }
+.param-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f3f4f6; }
+.param-label { flex:1; font-size:13px; color:#374151; }
+.param-note { font-size:11px; color:var(--hint); margin-top:2px; }
+.param-input { width:80px; font-size:14px; padding:6px 10px; border:1.5px solid #e5e7eb; border-radius:8px; text-align:right; background:#f9f9f9; font-family:inherit; outline:none; }
+.param-input:focus { border-color:var(--navy); background:white; }
 </style>
 </head>
 <body>
@@ -249,16 +265,36 @@ textarea { resize: none; height: 68px; line-height: 1.5; }
 <script>
 /* ─── 設定區（可修改） ─── */
 const CONFIG = {
-  // 預設密碼 HoDa@2025 的 SHA-256 hash，如需換密碼請至 README 說明
-  PASSWORD_HASH: "32ecec45d7b4df854384d733275833dabfba425a36d3594776fa091332b266d7",
-  // Google Apps Script 部署 URL（完成後填入）
+  ADMIN_PASSWORD_HASH: "32ecec45d7b4df854384d733275833dabfba425a36d3594776fa091332b266d7", // HoDa@2025
+  STAFF_PASSWORD_HASH: "2ed927e972728bc356c12808c31656d17ce6a4afded459165923d4b5c25ffd4f", // 1688
+  ADMIN_USERS: ["Frank", "Charlene"],
   SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzXEfuE_HjMBRikxD_eOVniVXiG41UNSoTx_7MdlmoKf_lbOEIyiJpGM8mklPYBMSsK/exec",
-  // 系統名稱
   SYSTEM_NAME: "禾大業務工具系統",
+  SESSION_MINUTES: 3,
 };
 
 /* ─── 全域狀態 ─── */
-let session = { loggedIn: false, user: "" };
+let session = { loggedIn: false, user: "", isAdmin: false };
+
+/* ─── Session 持久化（3分鐘） ─── */
+function saveSession() {
+  sessionStorage.setItem("hoda_s", JSON.stringify({ user: session.user, isAdmin: session.isAdmin, ts: Date.now() }));
+}
+function restoreSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem("hoda_s") || "null");
+    if (s && (Date.now() - s.ts) < CONFIG.SESSION_MINUTES * 60000) {
+      session = { loggedIn: true, user: s.user, isAdmin: !!s.isAdmin };
+      return true;
+    }
+  } catch(e) {}
+  sessionStorage.removeItem("hoda_s");
+  return false;
+}
+function clearSession() {
+  session = { loggedIn: false, user: "", isAdmin: false };
+  sessionStorage.removeItem("hoda_s");
+}
 
 /* ─── 工具一：勘查清單 ─── */
 const CL_SECTIONS = [
@@ -270,7 +306,7 @@ const CL_SECTIONS = [
   { title:"包租／代管條件", icon:"ti-writing", items:["屋主期待月租金","純代管 vs 包租確認","接受30-60天試營運","接受禾大統一管理","接受必要修繕","修繕費負擔確認","小額修繕授權額度","接受轉租或分租","合約年限確認"], fields:[{key:"mgmtType",label:"管理方式",type:"select",options:["包租","代管","待定"]},{key:"expectedRent",label:"期待月租 (NT$)"},{key:"repairLimit",label:"小額修繕授權額度 (NT$)"},{key:"contractYears",label:"合約年限（年）"}]},
   { title:"現場交接資料", icon:"ti-key", items:["鑰匙交接","門禁卡交接","信箱鑰匙交接","水電瓦斯帳單","網路帳號","管委會聯絡方式","大樓規約","垃圾清運時間","附近停車/管理室注意事項"], fields:[{key:"garbageTime",label:"垃圾清運時間"},{key:"netAccount",label:"網路帳號"},{key:"buildingMgr",label:"管委會聯絡方式"},{key:"specialNote",label:"特殊注意事項"}]},
 ];
-let clState = { step:0, landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)}, checks:{}, fields:{}, notes:{}, submitted:false };
+let clState = { step:0, landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10),referrer:"",manager:""}, checks:{}, fields:{}, notes:{}, submitted:false };
 
 /* ─── 工具二：評分表 ─── */
 const SC_SECTIONS = [
@@ -389,7 +425,8 @@ async function renderHistList() {
     histState.tab = el.dataset.tab;
     renderHistList();
   }));
-  const rows = await fetchFromSheets(tab);
+  const allRows = await fetchFromSheets(tab);
+  const rows = session.isAdmin ? allRows : allRows.filter(r => r['業務姓名'] === session.user);
   histState.rows = rows;
   const listEl = document.getElementById("hist-list");
   if (!listEl) return;
@@ -522,6 +559,7 @@ function prefillChecklistFromRow(row) {
     landlord: {
       name: row['屋主姓名']||'', phone: row['聯絡電話']||'', line: row['LINE ID']||'',
       address: row['物件地址']||'', date: row['勘查日期']||new Date().toISOString().slice(0,10),
+      referrer: row['引薦人']||'', manager: row['管理人員']||'',
     },
     checks: {},
     fields: {
@@ -585,10 +623,12 @@ async function doLogin() {
   const err = document.getElementById("login-err");
   if (!user) { err.style.display="block"; err.textContent="請輸入業務姓名"; return; }
   const hash = await sha256(pw);
-  if (hash === CONFIG.PASSWORD_HASH) {
-    session.loggedIn = true;
-    session.user = user;
+  const isAdmin = CONFIG.ADMIN_USERS.includes(user);
+  const validHash = isAdmin ? CONFIG.ADMIN_PASSWORD_HASH : CONFIG.STAFF_PASSWORD_HASH;
+  if (hash === validHash) {
+    session = { loggedIn: true, user, isAdmin };
     scState.info.appraiser = user;
+    saveSession();
     err.style.display = "none";
     renderDashboard();
   } else {
@@ -612,8 +652,8 @@ function renderDashboard() {
         <div class="dashboard-user">
           <div class="dashboard-user-avatar">${session.user.charAt(0)}</div>
           <div>
-            <div class="dashboard-user-name">${session.user}</div>
-            <div class="dashboard-user-role">業務人員 · ${new Date().toLocaleDateString('zh-TW')}</div>
+            <div class="dashboard-user-name">${session.user} ${session.isAdmin?'<span class="admin-badge">管理員</span>':''}</div>
+            <div class="dashboard-user-role">${session.isAdmin?'系統管理員':'業務人員'} · ${new Date().toLocaleDateString('zh-TW')}</div>
           </div>
         </div>
       </div>
@@ -662,6 +702,49 @@ function renderDashboard() {
             <span class="tool-tag" style="background:#f3e8ff;color:#7e22ce">補正編輯</span>
           </div>
         </div>
+        ${session.isAdmin ? `
+        <div class="tool-card" id="go-property">
+          <div class="tool-card-header">
+            <div class="tool-icon tool-icon-4"><i class="ti ti-home-check" style="font-size:26px"></i></div>
+            <div style="flex:1">
+              <div class="tool-card-title">物件台帳登錄</div>
+              <div class="tool-card-desc">登錄已簽約物件，自動生成引薦人與管理人員獎金排程</div>
+            </div>
+            <i class="ti ti-chevron-right tool-card-arrow"></i>
+          </div>
+          <div class="tool-card-footer">
+            <span class="tool-tag tag-green">自動獎金排程</span>
+            <span class="tool-tag tag-green">Email通知</span>
+          </div>
+        </div>
+        <div class="tool-card" id="go-bonus">
+          <div class="tool-card-header">
+            <div class="tool-icon tool-icon-5"><i class="ti ti-cash" style="font-size:26px"></i></div>
+            <div style="flex:1">
+              <div class="tool-card-title">獎金儀表板</div>
+              <div class="tool-card-desc">查看即將到期或逾期的引薦人／管理人員獎金，確認後標記發放</div>
+            </div>
+            <i class="ti ti-chevron-right tool-card-arrow"></i>
+          </div>
+          <div class="tool-card-footer">
+            <span class="tool-tag" style="background:#fce4ec;color:#880e4f">管理員專用</span>
+            <span class="tool-tag" style="background:#fce4ec;color:#880e4f">到期提醒</span>
+          </div>
+        </div>
+        <div class="tool-card" id="go-settings">
+          <div class="tool-card-header">
+            <div class="tool-icon tool-icon-6"><i class="ti ti-settings" style="font-size:26px"></i></div>
+            <div style="flex:1">
+              <div class="tool-card-title">系統設定</div>
+              <div class="tool-card-desc">調整獎金計算參數：費率、分次比例、感謝禮金額等</div>
+            </div>
+            <i class="ti ti-chevron-right tool-card-arrow"></i>
+          </div>
+          <div class="tool-card-footer">
+            <span class="tool-tag tag-gold">Frank 專用</span>
+            <span class="tool-tag tag-gold">可調整參數</span>
+          </div>
+        </div>` : ''}
         <div class="db-card">
           <div class="db-card-title"><i class="ti ti-database" style="font-size:16px"></i>Google Sheets 資料庫</div>
           <div class="db-status">
@@ -675,10 +758,15 @@ function renderDashboard() {
         </a>
       </div>
     </div>`);
-  document.getElementById("logout-btn").addEventListener("click", () => { session.loggedIn=false; session.user=""; renderLogin(); });
-  document.getElementById("go-checklist").addEventListener("click", () => { clState={step:0,landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10)},checks:{},fields:{},notes:{},submitted:false}; renderCL(); });
+  document.getElementById("logout-btn").addEventListener("click", () => { clearSession(); renderLogin(); });
+  document.getElementById("go-checklist").addEventListener("click", () => { clState={step:0,landlord:{name:"",phone:"",line:"",address:"",date:new Date().toISOString().slice(0,10),referrer:"",manager:""},checks:{},fields:{},notes:{},submitted:false}; renderCL(); });
   document.getElementById("go-scoring").addEventListener("click", () => { scState={step:0,info:{address:"",appraiser:session.user,date:new Date().toISOString().slice(0,10),contact:""},answers:{},note:"",submitted:false}; renderSC(); });
   document.getElementById("go-history").addEventListener("click", () => { histState.tab="checklist"; histState.rows=[]; histState.selectedRow=null; renderHistory(); });
+  if (session.isAdmin) {
+    document.getElementById("go-property").addEventListener("click", renderPropertyRegistry);
+    document.getElementById("go-bonus").addEventListener("click", renderBonusDashboard);
+    document.getElementById("go-settings").addEventListener("click", renderSettings);
+  }
 }
 
 /* ════════════════════════════════
@@ -717,6 +805,11 @@ function renderCLInfo() {
       <div class="card">
         <div class="card-title"><i class="ti ti-user-circle"></i>房東基本資料</div>
         ${[{key:"name",label:"屋主姓名",placeholder:"王大明"},{key:"phone",label:"聯絡電話",type:"tel",placeholder:"0912-345-678"},{key:"line",label:"LINE ID",placeholder:"wang123"},{key:"address",label:"勘查物件地址",placeholder:"台北市中山區..."},{key:"date",label:"勘查日期",type:"date"}].map(f=>fieldHTML(f,l[f.key])).join("")}
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-users-group"></i>引薦 / 管理人員 <span style="font-size:11px;font-weight:400;color:var(--hint)">(選填)</span></div>
+        <div class="field"><div class="field-label">引薦人姓名</div><input type="text" data-key="referrer" value="${l.referrer||''}" placeholder="推薦此物件的人（如有）"></div>
+        <div class="field"><div class="field-label">負責管理人員</div><input type="text" data-key="manager" value="${l.manager||''}" placeholder="負責日常管理的業務（如有）"></div>
       </div>
       <button class="btn-primary" id="cl-start"><i class="ti ti-player-play" style="font-size:17px"></i>開始逐項確認</button>
     </div>`;
@@ -792,20 +885,30 @@ function renderCLReview() {
         <div style="height:7px;background:#f3f4f6;border-radius:4px;margin-top:12px"><div style="height:100%;width:${pct}%;background:${pct>=80?'var(--gold)':'var(--navy)'};border-radius:4px;transition:width .5s"></div></div>
       </div>
       ${clState.editRowIndex?`<div class="edit-banner"><i class="ti ti-edit" style="font-size:16px;flex-shrink:0"></i>補正模式：將覆蓋原始記錄</div>`:''}
+      ${!clState.editRowIndex?`<div class="autosave-banner" id="cl-autosave-banner"><i class="ti ti-loader" style="font-size:16px;flex-shrink:0"></i><span id="cl-autosave-status">自動儲存中...</span></div>`:''}
       ${rows}
-      <button class="btn-secondary" id="cl-back2" style="width:100%;margin-bottom:10px">返回修改</button>
-      <button class="btn-primary" id="cl-submit"><i class="ti ti-send" style="font-size:17px"></i>${clState.editRowIndex?'更新補正至 Google Sheets':'確認送出至 Google Sheets'}</button>
-      <div style="font-size:11px;color:var(--hint);text-align:center;margin-top:8px">資料將儲存至禾大屋管房東資料庫</div>
+      <button class="btn-secondary" id="cl-back2" style="width:100%;margin-bottom:10px"><i class="ti ti-arrow-left" style="font-size:15px"></i>返回修改</button>
+      ${clState.editRowIndex?`<button class="btn-primary" id="cl-submit"><i class="ti ti-send" style="font-size:17px"></i>更新補正至 Google Sheets</button>`:''}
+      <button class="btn-primary" id="cl-done-btn" style="${clState.editRowIndex?'margin-top:10px':''}"><i class="ti ti-check" style="font-size:17px"></i>完成</button>
     </div>`);
   app.querySelectorAll(".card[data-si]").forEach(el=>el.addEventListener("click",()=>{ clState.step=parseInt(el.dataset.si)+1; renderCL(); }));
   app.querySelector("#cl-back2").addEventListener("click",()=>{ clState.step=CL_SECTIONS.length; renderCL(); });
   app.querySelector("#cl-home-btn2").addEventListener("click", renderDashboard);
-  app.querySelector("#cl-submit").addEventListener("click", async()=>{
-    const btn=app.querySelector("#cl-submit"); btn.disabled=true; btn.textContent="送出中...";
-    const clPostType = clState.editRowIndex ? "update_checklist" : "checklist";
-    await postToSheets(clPostType,{ landlord:clState.landlord, fields:clState.fields, sections:CL_SECTIONS.map((s,i)=>({title:s.title,items:s.items.map((item,j)=>({item,checked:!!clState.checks[`${i}-${j}`]})),notes:clState.notes[i]||""})), appraiser:session.user, submittedAt:new Date().toISOString(), _rowIndex:clState.editRowIndex||undefined });
-    clState.submitted=true; renderCLDone();
-  });
+  app.querySelector("#cl-done-btn").addEventListener("click", ()=>{ clState.submitted=true; renderCLDone(); });
+  if (clState.editRowIndex) {
+    app.querySelector("#cl-submit").addEventListener("click", async()=>{
+      const btn=app.querySelector("#cl-submit"); btn.disabled=true; btn.textContent="送出中...";
+      await postToSheets("update_checklist",{ landlord:clState.landlord, fields:clState.fields, sections:CL_SECTIONS.map((s,i)=>({title:s.title,items:s.items.map((item,j)=>({item,checked:!!clState.checks[`${i}-${j}`]})),notes:clState.notes[i]||""})), appraiser:session.user, submittedAt:new Date().toISOString(), _rowIndex:clState.editRowIndex });
+      clState.submitted=true; renderCLDone();
+    });
+  } else if (!clState.submitted) {
+    const savePayload = { landlord:clState.landlord, fields:clState.fields, sections:CL_SECTIONS.map((s,i)=>({title:s.title,items:s.items.map((item,j)=>({item,checked:!!clState.checks[`${i}-${j}`]})),notes:clState.notes[i]||""})), appraiser:session.user, submittedAt:new Date().toISOString() };
+    postToSheets("checklist", savePayload).then(ok => {
+      const banner = document.getElementById("cl-autosave-banner");
+      const status = document.getElementById("cl-autosave-status");
+      if (banner && status) { banner.style.borderColor = ok ? "#a5d6a7" : "#ef9a9a"; status.textContent = ok ? "✓ 已自動儲存，Email 通知已發送" : "⚠ 儲存失敗，請點「完成」重試"; banner.querySelector("i").className = ok ? "ti ti-cloud-check" : "ti ti-alert-circle"; }
+    });
+  }
 }
 function renderCLDone() {
   const isEdit = !!clState.editRowIndex;
@@ -951,8 +1054,10 @@ function renderSCResult() {
         <strong style="color:#1a1a1a">物件：</strong>${scState.info.address||'—'} &nbsp; <strong style="color:#1a1a1a">屋主：</strong>${scState.info.contact||'—'}
       </div>
       ${scState.editRowIndex?`<div class="edit-banner"><i class="ti ti-edit" style="font-size:16px;flex-shrink:0"></i>補正模式：將覆蓋原始評分記錄</div>`:''}
-      <button class="btn-secondary" id="sc-back2" style="width:100%;margin-bottom:10px">返回修改</button>
-      <button class="btn-primary" id="sc-submit"><i class="ti ti-send" style="font-size:17px"></i>${scState.editRowIndex?'更新補正至 Google Sheets':'送出評分至 Google Sheets'}</button>
+      ${!scState.editRowIndex?`<div class="autosave-banner" id="sc-autosave-banner"><i class="ti ti-loader" style="font-size:16px;flex-shrink:0"></i><span id="sc-autosave-status">自動儲存中...</span></div>`:''}
+      <button class="btn-secondary" id="sc-back2" style="width:100%;margin-bottom:10px"><i class="ti ti-arrow-left" style="font-size:15px"></i>返回修改</button>
+      ${scState.editRowIndex?`<button class="btn-primary" id="sc-submit" style="margin-bottom:10px"><i class="ti ti-send" style="font-size:17px"></i>更新補正至 Google Sheets</button>`:''}
+      <button class="btn-primary" id="sc-done-btn"><i class="ti ti-check" style="font-size:17px"></i>完成</button>
       <button class="print-btn" id="sc-print"><i class="ti ti-printer" style="font-size:16px"></i>列印 / 儲存 PDF</button>
     </div>`);
   const noteEl=app.querySelector("#sc-note");
@@ -960,12 +1065,21 @@ function renderSCResult() {
   app.querySelector("#sc-back2").addEventListener("click",()=>{ scState.step=SC_SECTIONS.length; renderSC(); });
   app.querySelector("#sc-home-btn").addEventListener("click", renderDashboard);
   app.querySelector("#sc-print").addEventListener("click",()=>window.print());
-  app.querySelector("#sc-submit").addEventListener("click", async()=>{
-    const btn=app.querySelector("#sc-submit"); btn.disabled=true; btn.textContent="送出中...";
-    const scPostType = scState.editRowIndex ? "update_scoring" : "scoring";
-    await postToSheets(scPostType,{ info:scState.info, score, recommendation:rec, answers:scState.answers, sections:SC_SECTIONS.map((s,i)=>({title:s.title,score:scSecScore(i),maxScore:s.maxScore})), note:scState.note, appraiser:session.user, submittedAt:new Date().toISOString(), _rowIndex:scState.editRowIndex||undefined });
-    scState.submitted=true; renderSCDone();
-  });
+  app.querySelector("#sc-done-btn").addEventListener("click",()=>{ scState.submitted=true; renderSCDone(); });
+  if (scState.editRowIndex) {
+    app.querySelector("#sc-submit").addEventListener("click", async()=>{
+      const btn=app.querySelector("#sc-submit"); btn.disabled=true; btn.textContent="送出中...";
+      await postToSheets("update_scoring",{ info:scState.info, score, recommendation:rec, answers:scState.answers, sections:SC_SECTIONS.map((s,i)=>({title:s.title,score:scSecScore(i),maxScore:s.maxScore})), note:scState.note, appraiser:session.user, submittedAt:new Date().toISOString(), _rowIndex:scState.editRowIndex });
+      scState.submitted=true; renderSCDone();
+    });
+  } else if (!scState.submitted) {
+    const savePayload = { info:scState.info, score, recommendation:rec, answers:scState.answers, sections:SC_SECTIONS.map((s,i)=>({title:s.title,score:scSecScore(i),maxScore:s.maxScore})), note:scState.note, appraiser:session.user, submittedAt:new Date().toISOString() };
+    postToSheets("scoring", savePayload).then(ok => {
+      const banner = document.getElementById("sc-autosave-banner");
+      const status = document.getElementById("sc-autosave-status");
+      if (banner && status) { banner.style.borderColor = ok ? "#a5d6a7" : "#ef9a9a"; status.textContent = ok ? "✓ 已自動儲存，Email 通知已發送" : "⚠ 儲存失敗"; banner.querySelector("i").className = ok ? "ti ti-cloud-check" : "ti ti-alert-circle"; }
+    });
+  }
 }
 function renderSCDone() {
   const isEdit = !!scState.editRowIndex;
@@ -986,8 +1100,260 @@ function renderSCDone() {
   app.querySelector("#sc-dash").addEventListener("click", renderDashboard);
 }
 
+/* ════════════════════════════════
+   物件台帳登錄 (PropertyRegistry)
+════════════════════════════════ */
+let propState = { property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代管",signDate:new Date().toISOString().slice(0,10),contractYears:"2",rentAmount:"",mgmtFee:"",marketRent:"",hodaRent:"",referrer:"",manager:"",note:""}, submitted:false };
+
+function renderPropertyRegistry() {
+  currentView = "property";
+  const p = propState.property;
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="prop-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">物件台帳登錄</div>
+      <div class="header-sub">已簽約物件 — 自動生成獎金排程</div>
+      <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
+    </div>
+    <div class="page">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-building"></i>物件基本資料</div>
+        <div class="field"><div class="field-label">物件地址</div><input type="text" data-key="address" value="${p.address||''}" placeholder="台北市中山區..."></div>
+        <div class="field"><div class="field-label">屋主姓名</div><input type="text" data-key="ownerName" value="${p.ownerName||''}" placeholder="王大明"></div>
+        <div class="field"><div class="field-label">屋主電話</div><input type="tel" data-key="ownerPhone" value="${p.ownerPhone||''}" placeholder="0912-345-678"></div>
+        <div class="field"><div class="field-label">管理方式</div><select data-key="mgmtType"><option value="代管" ${p.mgmtType==="代管"?"selected":""}>代管</option><option value="包租" ${p.mgmtType==="包租"?"selected":""}>包租</option></select></div>
+        <div class="field"><div class="field-label">簽約日期</div><input type="date" data-key="signDate" value="${p.signDate||''}"></div>
+        <div class="field"><div class="field-label">合約年限（年）</div><input type="text" data-key="contractYears" value="${p.contractYears||'2'}" placeholder="2"></div>
+      </div>
+      <div class="card" id="prop-fee-card">
+        <div class="card-title"><i class="ti ti-currency-dollar"></i>費用資料</div>
+        <div id="prop-fee-fields">
+          <div class="field"><div class="field-label">每月代管費 (NT$)</div><input type="text" data-key="mgmtFee" value="${p.mgmtFee||''}" placeholder="5000"></div>
+          <div class="field"><div class="field-label">月租金 (NT$) <span style="font-size:11px;color:var(--hint)">帳面收租</span></div><input type="text" data-key="rentAmount" value="${p.rentAmount||''}" placeholder="20000"></div>
+          <div class="field" id="prop-market-field" style="display:${p.mgmtType==='包租'?'block':'none'}"><div class="field-label">市場月租 (NT$) <span style="font-size:11px;color:var(--hint)">包租用</span></div><input type="text" data-key="marketRent" value="${p.marketRent||''}" placeholder="25000"></div>
+          <div class="field" id="prop-hoda-field" style="display:${p.mgmtType==='包租'?'block':'none'}"><div class="field-label">禾大收租 (NT$) <span style="font-size:11px;color:var(--hint)">包租用</span></div><input type="text" data-key="hodaRent" value="${p.hodaRent||''}" placeholder="20000"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-users-group"></i>引薦 / 管理人員 <span style="font-size:11px;font-weight:400;color:var(--hint)">(選填)</span></div>
+        <div class="field"><div class="field-label">引薦人姓名</div><input type="text" data-key="referrer" value="${p.referrer||''}" placeholder="推薦此物件簽約的人"></div>
+        <div class="field"><div class="field-label">負責管理人員</div><input type="text" data-key="manager" value="${p.manager||''}" placeholder="負責日常管理的業務"></div>
+        <div class="field"><div class="field-label">備注</div><textarea data-key="note" placeholder="其他注意事項...">${p.note||''}</textarea></div>
+      </div>
+      <div style="background:var(--gold-light);border:1px solid #e8d5a3;border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:12px;color:#7a5c1a;line-height:1.8">
+        <strong>獎金排程預覽（送出後自動生成）</strong><br>
+        代管引薦人：首月管理費×50%，分三期(40/30/30%)發放<br>
+        包租引薦人：月差額×1個月，簽約+第6個月各一次<br>
+        管理人員：月代管費×15%（六個月結一次）<br>
+        感謝禮：引薦人1次/年，管理人員2次/年（各NT$1,500）
+      </div>
+      <button class="btn-primary" id="prop-submit"><i class="ti ti-device-floppy" style="font-size:17px"></i>登錄並生成獎金排程</button>
+    </div>`);
+  bindField(app, propState.property);
+  app.querySelector("#prop-home-btn").addEventListener("click", renderDashboard);
+  const mgmtSel = app.querySelector("select[data-key='mgmtType']");
+  const toggleBaozuFields = () => {
+    const isBaozu = mgmtSel.value === "包租";
+    const mf = document.getElementById("prop-market-field"), hf = document.getElementById("prop-hoda-field");
+    if (mf) mf.style.display = isBaozu ? "block" : "none";
+    if (hf) hf.style.display = isBaozu ? "block" : "none";
+  };
+  mgmtSel.addEventListener("change", toggleBaozuFields);
+  app.querySelector("#prop-submit").addEventListener("click", async () => {
+    const p = propState.property;
+    if (!p.address) { alert("請填寫物件地址"); return; }
+    const btn = app.querySelector("#prop-submit"); btn.disabled = true; btn.textContent = "送出中...";
+    const ok = await postToSheets("property", { property: p, registrar: session.user, submittedAt: new Date().toISOString() });
+    if (ok) { propState.submitted = true; renderPropDone(); }
+    else { btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:17px"></i>重試送出'; }
+  });
+}
+
+function renderPropDone() {
+  const p = propState.property;
+  setHTML(`
+    <div class="header"><div class="header-badge">禾大屋管 HODA</div><div class="header-title">台帳登錄完成</div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div></div>
+    <div class="page" style="padding-top:40px;text-align:center">
+      <div style="width:80px;height:80px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px"><i class="ti ti-check" style="font-size:40px;color:#2e7d32"></i></div>
+      <div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px">物件已登錄！</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:24px"><strong>${p.address||'物件'}</strong><br>獎金排程已自動建立<br>Email 通知已發送</div>
+      ${p.referrer?`<div style="background:#f3e8ff;border-radius:10px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#7e22ce">引薦人 <strong>${p.referrer}</strong> 的獎金排程已建立</div>`:''}
+      ${p.manager?`<div style="background:#e3f2fd;border-radius:10px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#1565c0">管理人員 <strong>${p.manager}</strong> 的獎金排程已建立</div>`:''}
+      <button class="btn-primary" id="prop-new" style="margin-top:10px"><i class="ti ti-plus" style="font-size:17px"></i>登錄下一個物件</button>
+      <button class="btn-secondary" id="prop-bonus" style="width:100%;margin-top:10px"><i class="ti ti-cash" style="font-size:15px"></i>查看獎金儀表板</button>
+      <button class="btn-secondary" id="prop-dash" style="width:100%;margin-top:10px"><i class="ti ti-home" style="font-size:15px"></i>回首頁</button>
+    </div>`);
+  app.querySelector("#prop-new").addEventListener("click", () => { propState={property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代管",signDate:new Date().toISOString().slice(0,10),contractYears:"2",rentAmount:"",mgmtFee:"",marketRent:"",hodaRent:"",referrer:"",manager:"",note:""},submitted:false}; renderPropertyRegistry(); });
+  app.querySelector("#prop-bonus").addEventListener("click", renderBonusDashboard);
+  app.querySelector("#prop-dash").addEventListener("click", renderDashboard);
+}
+
+/* ════════════════════════════════
+   獎金儀表板 (BonusDashboard)
+════════════════════════════════ */
+async function renderBonusDashboard() {
+  if (!session.isAdmin) { renderDashboard(); return; }
+  currentView = "bonus";
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="bonus-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">獎金儀表板</div>
+      <div class="header-sub">待發放 / 即將到期獎金</div>
+      <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+    <div class="page">
+      <div id="bonus-list"><div class="hist-loading"><i class="ti ti-loader" style="font-size:28px;display:block;margin-bottom:10px"></i>載入中...</div></div>
+    </div>`);
+  app.querySelector("#bonus-home-btn").addEventListener("click", renderDashboard);
+
+  let rows = [];
+  try {
+    const res = await fetch(`${CONFIG.SCRIPT_URL}?action=bonus_dashboard`);
+    const json = await res.json();
+    rows = json.rows || [];
+  } catch(e) {}
+
+  const listEl = document.getElementById("bonus-list");
+  if (!listEl) return;
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="hist-empty"><i class="ti ti-mood-smile" style="font-size:36px;display:block;margin-bottom:12px"></i>目前無待發放獎金<br>60天內無到期項目</div>`;
+    return;
+  }
+  const now = new Date();
+  listEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">共 ${rows.length} 筆待發放，點選可標記已發放</div>` +
+    rows.map((row, idx) => {
+      const due = new Date(row['預計發放日']);
+      const diff = Math.round((due - now) / 86400000);
+      const isOverdue = diff < 0;
+      const isSoon = diff >= 0 && diff <= 14;
+      const cls = isOverdue ? 'bonus-overdue' : isSoon ? 'bonus-soon' : 'bonus-future';
+      const dueLabel = isOverdue ? `逾期 ${-diff} 天` : diff === 0 ? '今天到期' : `${diff} 天後`;
+      const dueBg = isOverdue ? '#ffebee' : isSoon ? '#fff3e0' : '#f3f4f6';
+      const dueFg = isOverdue ? '#c62828' : isSoon ? '#e65100' : '#6b7280';
+      const amt = parseInt(row['金額(NT$)'])||0;
+      return `<div class="bonus-card ${cls}" data-idx="${idx}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div style="font-size:14px;font-weight:700;color:var(--navy);flex:1">${row['受益人']||'—'} <span style="font-size:11px;font-weight:600;color:${row['角色']==='引薦人'?'#7e22ce':'#1565c0'}">${row['角色']||''}</span></div>
+          <div style="font-size:16px;font-weight:900;color:var(--navy)">NT$${amt.toLocaleString()}</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${row['獎金類型']||''}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${row['物件地址']||''}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;background:${dueBg};color:${dueFg};padding:3px 8px;border-radius:20px;font-weight:700">${dueLabel}</span>
+          <button class="btn-pay" data-idx="${idx}" style="font-size:12px;padding:6px 14px;border-radius:8px;background:var(--navy);color:white;border:none;cursor:pointer;font-family:inherit;font-weight:700">✓ 標記已發放</button>
+        </div>
+      </div>`;
+    }).join('');
+
+  listEl.querySelectorAll(".btn-pay").forEach(btn => btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const idx = parseInt(btn.dataset.idx);
+    const row = rows[idx];
+    if (!confirm(`確認已發放 NT$${(parseInt(row['金額(NT$)'])||0).toLocaleString()} 給 ${row['受益人']}？`)) return;
+    btn.textContent = "發放中..."; btn.disabled = true;
+    await postToSheets("pay_bonus", { address: row['物件地址'], recipient: row['受益人'], role: row['角色'], bonusType: row['獎金類型'], amount: parseInt(row['金額(NT$)'])||0, paidBy: session.user, _rowIndex: row._rowIndex });
+    renderBonusDashboard();
+  }));
+}
+
+/* ════════════════════════════════
+   系統設定 (Settings)
+════════════════════════════════ */
+let settingsState = { params: null };
+
+async function renderSettings() {
+  if (!session.isAdmin) { renderDashboard(); return; }
+  currentView = "settings";
+  setHTML(`
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="set-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">系統設定</div>
+      <div class="header-sub">獎金計算參數調整</div>
+      <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+    <div class="page">
+      <div id="settings-body"><div class="hist-loading"><i class="ti ti-loader" style="font-size:28px;display:block;margin-bottom:10px"></i>載入參數中...</div></div>
+    </div>`);
+  app.querySelector("#set-home-btn").addEventListener("click", renderDashboard);
+
+  let params = { daimgmtRefRate:0.5,daimgmtRef1:0.4,daimgmtRef2:0.3,daimgmtRef3:0.3,baozuRef1:1,baozuRef2:1,managerBaseRate:0.15,managerMidRate:0.20,managerHighRate:0.25,managerBasePropCount:5,managerMidPropCount:10,thanksGiftAmount:1500,thanksGiftReferrer:1,thanksGiftManager:2 };
+  try {
+    const res = await fetch(`${CONFIG.SCRIPT_URL}?action=params`);
+    const json = await res.json();
+    if (json.params) params = { ...params, ...json.params };
+  } catch(e) {}
+  settingsState.params = { ...params };
+
+  const body = document.getElementById("settings-body");
+  if (!body) return;
+
+  const pctFmt = v => `${Math.round(v*100)}%`;
+  const pctParse = v => parseFloat(v)/100;
+  const sections = [
+    { title:"代管 · 引薦人獎金", icon:"ti-building", rows:[
+      {key:"daimgmtRefRate", label:"首月管理費費率", note:"引薦人獎金 = 首月管理費 × 此比例", val:pctFmt(params.daimgmtRefRate), parse:pctParse},
+      {key:"daimgmtRef1", label:"第0個月分配比例", note:"例：0.4 = 40%", val:pctFmt(params.daimgmtRef1), parse:pctParse},
+      {key:"daimgmtRef2", label:"第6個月分配比例", val:pctFmt(params.daimgmtRef2), parse:pctParse},
+      {key:"daimgmtRef3", label:"第12個月分配比例", val:pctFmt(params.daimgmtRef3), parse:pctParse},
+    ]},
+    { title:"包租 · 引薦人獎金", icon:"ti-home-dollar", rows:[
+      {key:"baozuRef1", label:"簽約時月差額倍率", note:"月差額 = 市場月租 - 禾大收租", val:params.baozuRef1, parse:parseFloat},
+      {key:"baozuRef2", label:"第6個月月差額倍率", val:params.baozuRef2, parse:parseFloat},
+    ]},
+    { title:"管理人員 · 月度佣金費率", icon:"ti-user-check", rows:[
+      {key:"managerBaseRate", label:"基本級費率", note:`1~${params.managerBasePropCount}件`, val:pctFmt(params.managerBaseRate), parse:pctParse},
+      {key:"managerMidRate", label:"中等級費率", note:`${params.managerBasePropCount+1}~${params.managerMidPropCount}件`, val:pctFmt(params.managerMidRate), parse:pctParse},
+      {key:"managerHighRate", label:"高等級費率", note:`${params.managerMidPropCount+1}件以上`, val:pctFmt(params.managerHighRate), parse:pctParse},
+      {key:"managerBasePropCount", label:"基本→中等件數門檻", val:params.managerBasePropCount, parse:parseInt},
+      {key:"managerMidPropCount", label:"中等→高等件數門檻", val:params.managerMidPropCount, parse:parseInt},
+    ]},
+    { title:"感謝禮", icon:"ti-gift", rows:[
+      {key:"thanksGiftAmount", label:"每次感謝禮金額 (NT$)", val:params.thanksGiftAmount, parse:parseInt},
+      {key:"thanksGiftReferrer", label:"引薦人次數/年", note:"用戶確認：1次", val:params.thanksGiftReferrer, parse:parseInt},
+      {key:"thanksGiftManager", label:"管理人員次數/年", note:"用戶確認：2次", val:params.thanksGiftManager, parse:parseInt},
+    ]},
+  ];
+
+  body.innerHTML = sections.map(sec => `
+    <div class="card">
+      <div class="card-title"><i class="ti ${sec.icon}"></i>${sec.title}</div>
+      ${sec.rows.map(r => `<div class="param-row">
+        <div><div class="param-label">${r.label}</div>${r.note?`<div class="param-note">${r.note}</div>`:''}
+        </div><input class="param-input" data-key="${r.key}" data-parse="${r.parse.name}" value="${r.val}">
+      </div>`).join('')}
+    </div>`).join('') +
+    `<button class="btn-primary" id="set-save"><i class="ti ti-device-floppy" style="font-size:17px"></i>儲存設定</button>
+     <div style="font-size:11px;color:var(--hint);text-align:center;margin-top:8px">設定將立即生效，影響之後登錄的新物件</div>`;
+
+  document.getElementById("set-save").addEventListener("click", async () => {
+    const newParams = { ...settingsState.params };
+    body.querySelectorAll(".param-input[data-key]").forEach(inp => {
+      const k = inp.dataset.key;
+      const rawVal = inp.value.replace('%','').trim();
+      const parsed = parseFloat(rawVal);
+      if (!isNaN(parsed)) {
+        // If original was percentage-formatted, convert back
+        const origParam = params[k];
+        newParams[k] = (origParam <= 1 && origParam > 0 && parsed > 1) ? parsed/100 : parsed;
+      }
+    });
+    const btn = document.getElementById("set-save"); btn.disabled = true; btn.textContent = "儲存中...";
+    const ok = await postToSheets("update_params", { params: newParams, updatedBy: session.user });
+    btn.disabled = false; btn.innerHTML = ok ? '<i class="ti ti-check" style="font-size:17px"></i>已儲存' : '<i class="ti ti-device-floppy" style="font-size:17px"></i>儲存設定';
+    if (ok) setTimeout(() => { btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:17px"></i>儲存設定'; }, 2000);
+  });
+}
+
 /* ─── 啟動 ─── */
-renderLogin();
+if (restoreSession()) {
+  scState.info.appraiser = session.user;
+  renderDashboard();
+} else {
+  renderLogin();
+}
 </script>
 </body>
 </html>
