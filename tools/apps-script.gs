@@ -26,6 +26,8 @@ function doPost(e) {
     else if (data.type === "update_scoring")   { updateScoring(ss, data);   sendScoringEmail(data, true); }
     else if (data.type === "property")         { saveProperty(ss, data);    sendPropertyEmail(data);         logType = "property"; }
     else if (data.type === "pay_bonus")        { payBonus(ss, data); }
+    else if (data.type === "edit_bonus")       { editBonus(ss, data); }
+    else if (data.type === "delete_bonus")     { deleteBonus(ss, data); }
     else if (data.type === "update_params")    { saveParams(ss, data); }
 
     if (logType) saveLog(ss, logType, data.appraiser || data.registrar || "未知", data.submittedAt);
@@ -278,7 +280,7 @@ function listBonusDashboard() {
     const obj = { _rowIndex: i + 2 };
     headers.forEach((h, j) => { obj[h] = row[j] instanceof Date ? row[j].toISOString() : row[j]; });
     return obj;
-  }).filter(r => r['狀態'] !== '已發放')
+  }).filter(r => r['狀態'] !== '已發放' && r['狀態'] !== '已刪除')
     .sort((a, b) => new Date(a['預計發放日']) - new Date(b['預計發放日']));
 
   return ContentService.createTextOutput(JSON.stringify({ rows })).setMimeType(ContentService.MimeType.JSON);
@@ -376,6 +378,34 @@ function getDefaultParams() {
     thanksGiftReferrer:   1,
     thanksGiftManager:    2,
   };
+}
+
+// ─── 修改獎金排程項目 ───
+function editBonus(ss, data) {
+  const sheet = ss.getSheetByName(SHEET_BONUS_SCHEDULE);
+  if (!sheet || !data._rowIndex) return;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (data.amount !== undefined) {
+    const col = headers.indexOf("金額(NT$)") + 1;
+    if (col) sheet.getRange(data._rowIndex, col).setValue(parseInt(data.amount) || 0);
+  }
+  if (data.dueDate) {
+    const col = headers.indexOf("預計發放日") + 1;
+    if (col) sheet.getRange(data._rowIndex, col).setValue(new Date(data.dueDate));
+  }
+  if (data.note !== undefined) {
+    const col = headers.indexOf("備注") + 1;
+    if (col) sheet.getRange(data._rowIndex, col).setValue(data.note);
+  }
+}
+
+// ─── 刪除獎金排程項目（軟刪除，標記狀態） ───
+function deleteBonus(ss, data) {
+  const sheet = ss.getSheetByName(SHEET_BONUS_SCHEDULE);
+  if (!sheet || !data._rowIndex) return;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const statusCol = headers.indexOf("狀態") + 1;
+  if (statusCol) sheet.getRange(data._rowIndex, statusCol).setValue("已刪除").setBackground("#eeeeee").setFontColor("#999999");
 }
 
 function getParamsObj(ss) {

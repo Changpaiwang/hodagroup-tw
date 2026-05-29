@@ -1380,68 +1380,173 @@ async function renderBonusDashboard() {
     </div>
     <div class="page">
       <div id="bonus-list"><div class="hist-loading"><i class="ti ti-loader" style="font-size:28px;display:block;margin-bottom:10px"></i>載入中...</div></div>
+    </div>
+    <div id="bem" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:900;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+      <div style="background:white;border-radius:16px;padding:24px;width:100%;max-width:380px">
+        <div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:16px">修改獎金項目</div>
+        <div style="margin-bottom:12px"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">金額 (NT$)</label><input id="be-amt" type="number" style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:inherit"></div>
+        <div style="margin-bottom:12px"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">預計發放日</label><input id="be-date" type="date" style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:inherit"></div>
+        <div style="margin-bottom:20px"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">備注</label><input id="be-note" type="text" placeholder="(選填)" style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:inherit"></div>
+        <div style="display:flex;gap:10px">
+          <button id="be-cancel" style="flex:1;padding:10px;border-radius:8px;border:1.5px solid #d1d5db;background:white;color:var(--muted);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">取消</button>
+          <button id="be-save" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--navy);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">儲存</button>
+        </div>
+      </div>
     </div>`);
+
   app.querySelector("#bonus-home-btn").addEventListener("click", renderDashboard);
 
   let rows = [];
-  try {
-    const res = await fetch(`${CONFIG.SCRIPT_URL}?action=bonus_dashboard`);
-    const json = await res.json();
-    rows = json.rows || [];
-  } catch(e) {}
+  let viewMode = "date";
+  let editTarget = null;
 
-  const listEl = document.getElementById("bonus-list");
-  if (!listEl) return;
-  const sheetsUrl = `https://docs.google.com/spreadsheets/d/1HsnhjNh6cDtM7mBrHIiy0SAu7Il08WqtnL1pgkXYS8E/edit#gid=0`;
-  if (!rows.length) {
-    listEl.innerHTML = `<div class="hist-empty"><i class="ti ti-mood-smile" style="font-size:36px;display:block;margin-bottom:12px"></i>目前無待發放獎金<br><a href="${sheetsUrl}" target="_blank" style="font-size:13px;color:var(--navy);margin-top:12px;display:inline-block">開啟 Google Sheets 查看完整記錄 ↗</a></div>`;
-    return;
+  const modal = document.getElementById("bem");
+  document.getElementById("be-cancel").addEventListener("click", () => { modal.style.display = "none"; });
+  document.getElementById("be-save").addEventListener("click", async () => {
+    if (!editTarget) return;
+    const sb = document.getElementById("be-save");
+    sb.textContent = "儲存中..."; sb.disabled = true;
+    await postToSheets("edit_bonus", {
+      _rowIndex: editTarget._rowIndex,
+      amount:  document.getElementById("be-amt").value,
+      dueDate: document.getElementById("be-date").value,
+      note:    document.getElementById("be-note").value
+    });
+    modal.style.display = "none";
+    await loadAndRender();
+  });
+
+  async function loadAndRender() {
+    try {
+      const res = await fetch(`${CONFIG.SCRIPT_URL}?action=bonus_dashboard`);
+      const json = await res.json();
+      rows = json.rows || [];
+    } catch(e) { rows = []; }
+    renderList();
   }
-  const nowDt = new Date();
-  const overdueCount = rows.filter(r => new Date(r['預計發放日']) < nowDt).length;
-  const totalAmt = rows.reduce((s,r)=>s+(parseInt(r['金額(NT$)'])||0),0);
-  const now = new Date();
-  listEl.innerHTML = `
-    <div style="background:var(--navy);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:12px;color:rgba(255,255,255,0.6)">共 ${rows.length} 筆待發放</div>${overdueCount?`<div style="font-size:12px;color:#ff8a80;font-weight:700;margin-top:2px">⚠ ${overdueCount} 筆已逾期</div>`:''}</div>
-      <div style="text-align:right"><div style="font-size:10px;color:var(--gold);letter-spacing:1px">合計金額</div><div style="font-size:18px;font-weight:900;color:var(--gold)">NT$${totalAmt.toLocaleString()}</div></div>
-    </div>
-    <a href="${sheetsUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;border:1.5px solid #d1d5db;background:white;color:var(--muted);font-size:13px;font-weight:600;text-decoration:none;margin-bottom:14px">
-      <i class="ti ti-table" style="font-size:14px"></i>開啟 Google Sheets 完整記錄 ↗
-    </a>` +
-    rows.map((row, idx) => {
-      const due = new Date(row['預計發放日']);
-      const diff = Math.round((due - now) / 86400000);
-      const isOverdue = diff < 0;
-      const isSoon = diff >= 0 && diff <= 14;
-      const cls = isOverdue ? 'bonus-overdue' : isSoon ? 'bonus-soon' : 'bonus-future';
-      const dueLabel = isOverdue ? `逾期 ${-diff} 天` : diff === 0 ? '今天到期' : `${diff} 天後`;
-      const dueBg = isOverdue ? '#ffebee' : isSoon ? '#fff3e0' : '#f3f4f6';
-      const dueFg = isOverdue ? '#c62828' : isSoon ? '#e65100' : '#6b7280';
-      const amt = parseInt(row['金額(NT$)'])||0;
-      return `<div class="bonus-card ${cls}" data-idx="${idx}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-          <div style="font-size:14px;font-weight:700;color:var(--navy);flex:1">${row['受益人']||'—'} <span style="font-size:11px;font-weight:600;color:${row['角色']==='引薦人'?'#7e22ce':'#1565c0'}">${row['角色']||''}</span></div>
-          <div style="font-size:16px;font-weight:900;color:var(--navy)">NT$${amt.toLocaleString()}</div>
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${row['獎金類型']||''}</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${row['物件地址']||''}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;background:${dueBg};color:${dueFg};padding:3px 8px;border-radius:20px;font-weight:700">${dueLabel}</span>
-          <button class="btn-pay" data-idx="${idx}" style="font-size:12px;padding:6px 14px;border-radius:8px;background:var(--navy);color:white;border:none;cursor:pointer;font-family:inherit;font-weight:700">✓ 標記已發放</button>
-        </div>
-      </div>`;
-    }).join('');
 
-  listEl.querySelectorAll(".btn-pay").forEach(btn => btn.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    const idx = parseInt(btn.dataset.idx);
-    const row = rows[idx];
-    if (!confirm(`確認已發放 NT$${(parseInt(row['金額(NT$)'])||0).toLocaleString()} 給 ${row['受益人']}？`)) return;
-    btn.textContent = "發放中..."; btn.disabled = true;
-    await postToSheets("pay_bonus", { address: row['物件地址'], recipient: row['受益人'], recipientEmail: row['受益人Email']||"", role: row['角色'], bonusType: row['獎金類型'], amount: parseInt(row['金額(NT$)'])||0, paidBy: session.user, _rowIndex: row._rowIndex });
-    renderBonusDashboard();
-  }));
+  function bonusCard(row, idx, compact) {
+    const due = new Date(row['預計發放日']);
+    const now = new Date();
+    const diff = Math.round((due - now) / 86400000);
+    const isOD = diff < 0, isSoon = diff >= 0 && diff <= 14;
+    const dueLabel = isOD ? `逾期 ${-diff} 天` : diff === 0 ? '今天到期' : `${diff} 天後`;
+    const dueBg = isOD ? '#ffebee' : isSoon ? '#fff3e0' : '#f3f4f6';
+    const dueFg = isOD ? '#c62828' : isSoon ? '#e65100' : '#6b7280';
+    const amt = parseInt(row['金額(NT$)'])||0;
+    return `<div style="background:white;${compact?'border-top:1px solid #e5e7eb;':'border:1.5px solid #e5e7eb;border-radius:12px;margin-bottom:10px;'}padding:13px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+        <div style="flex:1;min-width:0">
+          ${!compact?`<div style="font-size:14px;font-weight:700;color:var(--navy)">${row['受益人']||'—'} <span style="font-size:11px;font-weight:600;color:${row['角色']==='引薦人'?'#7e22ce':'#1565c0'}">${row['角色']||''}</span></div>`:''}
+          <div style="font-size:12px;color:var(--muted)">${row['獎金類型']||''}</div>
+          <div style="font-size:12px;color:var(--muted)">${row['物件地址']||''}</div>
+        </div>
+        <div style="font-size:${compact?14:16}px;font-weight:900;color:var(--navy);margin-left:10px;flex-shrink:0">NT$${amt.toLocaleString()}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:8px">
+        <span style="font-size:11px;background:${dueBg};color:${dueFg};padding:3px 8px;border-radius:20px;font-weight:700;flex-shrink:0">${dueLabel}</span>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button class="btn-edit" data-idx="${idx}" title="修改" style="padding:5px 9px;border-radius:7px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;cursor:pointer;line-height:1"><i class="ti ti-pencil" style="font-size:12px"></i></button>
+          <button class="btn-del" data-idx="${idx}" title="刪除" style="padding:5px 9px;border-radius:7px;background:#ffebee;color:#c62828;border:1px solid #ffcdd2;cursor:pointer;line-height:1"><i class="ti ti-trash" style="font-size:12px"></i></button>
+          <button class="btn-pay" data-idx="${idx}" style="font-size:12px;padding:5px 11px;border-radius:7px;background:var(--navy);color:white;border:none;cursor:pointer;font-family:inherit;font-weight:700">✓ 已發放</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderList() {
+    const listEl = document.getElementById("bonus-list");
+    if (!listEl) return;
+    const sheetsUrl = `https://docs.google.com/spreadsheets/d/1HsnhjNh6cDtM7mBrHIiy0SAu7Il08WqtnL1pgkXYS8E/edit#gid=0`;
+    const now = new Date();
+    const overdueCount = rows.filter(r => new Date(r['預計發放日']) < now).length;
+    const totalAmt = rows.reduce((s,r)=>s+(parseInt(r['金額(NT$)'])||0),0);
+    const tab = (id, label) => `<button class="vtab" data-v="${id}" style="flex:1;padding:7px 4px;border-radius:8px;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:${viewMode===id?'white':'transparent'};color:${viewMode===id?'var(--navy)':'var(--muted)'};box-shadow:${viewMode===id?'0 1px 4px rgba(0,0,0,0.1)':'none'}">${label}</button>`;
+
+    let body = '';
+    if (!rows.length) {
+      body = `<div class="hist-empty"><i class="ti ti-mood-smile" style="font-size:36px;display:block;margin-bottom:12px"></i>目前無待發放獎金<br><a href="${sheetsUrl}" target="_blank" style="font-size:13px;color:var(--navy);margin-top:12px;display:inline-block">開啟 Google Sheets 查看完整記錄 ↗</a></div>`;
+    } else if (viewMode === "date") {
+      body = rows.map((r,i) => bonusCard(r,i,false)).join('');
+    } else if (viewMode === "person") {
+      const g = {};
+      rows.forEach((r,i) => { const k=r['受益人']||'未知'; if(!g[k])g[k]={role:r['角色'],items:[]}; g[k].items.push([r,i]); });
+      body = Object.entries(g).map(([name,{role,items}]) => {
+        const tot = items.reduce((s,[r])=>s+(parseInt(r['金額(NT$)'])||0),0);
+        return `<div style="margin-bottom:14px">
+          <div style="background:var(--navy);border-radius:10px 10px 0 0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:14px;font-weight:700;color:white">${name} <span style="font-size:11px;color:#C9A84C;font-weight:600">${role}</span></span>
+            <span style="font-size:13px;font-weight:900;color:#C9A84C">NT$${tot.toLocaleString()}</span>
+          </div>
+          <div style="border:1.5px solid var(--navy);border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
+            ${items.map(([r,i])=>bonusCard(r,i,true)).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      const g = {};
+      rows.forEach((r,i) => {
+        const d = new Date(r['預計發放日']);
+        const k = isNaN(d)?'未定':`${d.getFullYear()}年${d.getMonth()+1}月`;
+        if(!g[k])g[k]={ts:isNaN(d)?Infinity:d.getTime(),items:[]};
+        g[k].items.push([r,i]);
+      });
+      body = Object.entries(g).sort((a,b)=>a[1].ts-b[1].ts).map(([mo,{ts,items}]) => {
+        const tot = items.reduce((s,[r])=>s+(parseInt(r['金額(NT$)'])||0),0);
+        const isOD = ts < now.getTime();
+        return `<div style="margin-bottom:14px">
+          <div style="background:${isOD?'#c62828':'var(--navy)'};border-radius:10px 10px 0 0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:14px;font-weight:700;color:white">${mo}${isOD?' ⚠':''}</span>
+            <span style="font-size:13px;font-weight:900;color:#C9A84C">NT$${tot.toLocaleString()}</span>
+          </div>
+          <div style="border:1.5px solid ${isOD?'#c62828':'var(--navy)'};border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
+            ${items.map(([r,i])=>bonusCard(r,i,true)).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    listEl.innerHTML = `
+      <div style="background:var(--navy);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:12px;color:rgba(255,255,255,0.6)">共 ${rows.length} 筆待發放</div>${overdueCount?`<div style="font-size:12px;color:#ff8a80;font-weight:700;margin-top:2px">⚠ ${overdueCount} 筆已逾期</div>`:''}</div>
+        <div style="text-align:right"><div style="font-size:10px;color:var(--gold);letter-spacing:1px">合計金額</div><div style="font-size:18px;font-weight:900;color:var(--gold)">NT$${totalAmt.toLocaleString()}</div></div>
+      </div>
+      <a href="${sheetsUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;border:1.5px solid #d1d5db;background:white;color:var(--muted);font-size:13px;font-weight:600;text-decoration:none;margin-bottom:14px">
+        <i class="ti ti-table" style="font-size:14px"></i>開啟 Google Sheets 完整記錄 ↗
+      </a>
+      <div style="display:flex;gap:4px;margin-bottom:14px;background:#f3f4f6;border-radius:10px;padding:4px">
+        ${tab('date','依日期')}${tab('person','依人員')}${tab('month','依月份')}
+      </div>
+      ${body}`;
+
+    listEl.querySelectorAll(".vtab").forEach(b => b.addEventListener("click", () => { viewMode = b.dataset.v; renderList(); }));
+    listEl.querySelectorAll(".btn-pay").forEach(b => b.addEventListener("click", async e => {
+      e.stopPropagation();
+      const row = rows[+b.dataset.idx];
+      if (!confirm(`確認已發放 NT$${(parseInt(row['金額(NT$)'])||0).toLocaleString()} 給 ${row['受益人']}？`)) return;
+      b.textContent = "發放中..."; b.disabled = true;
+      await postToSheets("pay_bonus", { address:row['物件地址'], recipient:row['受益人'], recipientEmail:row['受益人Email']||"", role:row['角色'], bonusType:row['獎金類型'], amount:parseInt(row['金額(NT$)'])||0, paidBy:session.user, _rowIndex:row._rowIndex });
+      await loadAndRender();
+    }));
+    listEl.querySelectorAll(".btn-edit").forEach(b => b.addEventListener("click", e => {
+      e.stopPropagation();
+      editTarget = rows[+b.dataset.idx];
+      document.getElementById("be-amt").value  = parseInt(editTarget['金額(NT$)'])||0;
+      document.getElementById("be-date").value = editTarget['預計發放日'] ? new Date(editTarget['預計發放日']).toISOString().slice(0,10) : '';
+      document.getElementById("be-note").value = editTarget['備注']||'';
+      modal.style.display = "flex";
+    }));
+    listEl.querySelectorAll(".btn-del").forEach(b => b.addEventListener("click", async e => {
+      e.stopPropagation();
+      const row = rows[+b.dataset.idx];
+      if (!confirm(`確定刪除「${row['受益人']} - ${row['獎金類型']}」？\n此操作無法復原。`)) return;
+      b.disabled = true;
+      await postToSheets("delete_bonus", { _rowIndex: row._rowIndex });
+      await loadAndRender();
+    }));
+  }
+
+  await loadAndRender();
 }
 
 /* ════════════════════════════════
