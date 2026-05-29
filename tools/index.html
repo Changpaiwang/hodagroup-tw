@@ -1108,6 +1108,7 @@ let propState = { property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代�
 function renderPropertyRegistry() {
   currentView = "property";
   const p = propState.property;
+  const isBaozu = p.mgmtType === "包租";
   setHTML(`
     <div class="header" style="position:relative">
       <button class="logout-btn" id="prop-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
@@ -1117,52 +1118,149 @@ function renderPropertyRegistry() {
       <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
     </div>
     <div class="page">
+
       <div class="card">
         <div class="card-title"><i class="ti ti-building"></i>物件基本資料</div>
         <div class="field"><div class="field-label">物件地址</div><input type="text" data-key="address" value="${p.address||''}" placeholder="台北市中山區..."></div>
         <div class="field"><div class="field-label">屋主姓名</div><input type="text" data-key="ownerName" value="${p.ownerName||''}" placeholder="王大明"></div>
         <div class="field"><div class="field-label">屋主電話</div><input type="tel" data-key="ownerPhone" value="${p.ownerPhone||''}" placeholder="0912-345-678"></div>
-        <div class="field"><div class="field-label">管理方式</div><select data-key="mgmtType"><option value="代管" ${p.mgmtType==="代管"?"selected":""}>代管</option><option value="包租" ${p.mgmtType==="包租"?"selected":""}>包租</option></select></div>
         <div class="field"><div class="field-label">簽約日期</div><input type="date" data-key="signDate" value="${p.signDate||''}"></div>
         <div class="field"><div class="field-label">合約年限（年）</div><input type="text" data-key="contractYears" value="${p.contractYears||'2'}" placeholder="2"></div>
       </div>
-      <div class="card" id="prop-fee-card">
-        <div class="card-title"><i class="ti ti-currency-dollar"></i>費用資料</div>
-        <div id="prop-fee-fields">
-          <div class="field"><div class="field-label">每月代管費 (NT$)</div><input type="text" data-key="mgmtFee" value="${p.mgmtFee||''}" placeholder="5000"></div>
-          <div class="field"><div class="field-label">月租金 (NT$) <span style="font-size:11px;color:var(--hint)">帳面收租</span></div><input type="text" data-key="rentAmount" value="${p.rentAmount||''}" placeholder="20000"></div>
-          <div class="field" id="prop-market-field" style="display:${p.mgmtType==='包租'?'block':'none'}"><div class="field-label">市場月租 (NT$) <span style="font-size:11px;color:var(--hint)">包租用</span></div><input type="text" data-key="marketRent" value="${p.marketRent||''}" placeholder="25000"></div>
-          <div class="field" id="prop-hoda-field" style="display:${p.mgmtType==='包租'?'block':'none'}"><div class="field-label">禾大收租 (NT$) <span style="font-size:11px;color:var(--hint)">包租用</span></div><input type="text" data-key="hodaRent" value="${p.hodaRent||''}" placeholder="20000"></div>
+
+      <div class="card" style="border:2px solid #e5e7eb">
+        <div class="card-title" style="margin-bottom:10px"><i class="ti ti-switch-horizontal"></i>管理方式</div>
+        <div style="display:flex;gap:10px">
+          <button id="btn-daimgmt" style="flex:1;padding:14px;border-radius:12px;border:2px solid ${!isBaozu?'var(--navy)':'#e5e7eb'};background:${!isBaozu?'var(--navy)':'white'};color:${!isBaozu?'white':'#374151'};font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;transition:all 0.15s">
+            <div style="font-size:20px;margin-bottom:4px">🏠</div>代管
+          </button>
+          <button id="btn-baozu" style="flex:1;padding:14px;border-radius:12px;border:2px solid ${isBaozu?'var(--navy)':'#e5e7eb'};background:${isBaozu?'var(--navy)':'white'};color:${isBaozu?'white':'#374151'};font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;transition:all 0.15s">
+            <div style="font-size:20px;margin-bottom:4px">🔑</div>包租
+          </button>
         </div>
       </div>
+
+      <div id="fee-daimgmt" style="display:${!isBaozu?'block':'none'}">
+        <div class="card" style="border-left:4px solid var(--navy)">
+          <div class="card-title"><i class="ti ti-currency-dollar"></i>代管費用資料</div>
+          <div style="font-size:12px;color:var(--muted);background:#f0f7ff;border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.8">
+            禾大替屋主管理物件，向屋主收取管理費<br>
+            <strong>引薦人獎金</strong> = 首月代管費 × 50%（分三期發放）
+          </div>
+          <div class="field">
+            <div class="field-label">每月代管費 (NT$) <span style="color:#c62828">*</span></div>
+            <div style="font-size:11px;color:var(--hint);margin-bottom:5px">禾大每月向屋主收取的管理費</div>
+            <input type="text" data-key="mgmtFee" value="${p.mgmtFee||''}" placeholder="例：5,000">
+          </div>
+          <div class="field">
+            <div class="field-label">月租金 (NT$)</div>
+            <div style="font-size:11px;color:var(--hint);margin-bottom:5px">租客每月繳的租金（選填，作為管理人員獎金備用基準）</div>
+            <input type="text" data-key="rentAmount" value="${p.rentAmount||''}" placeholder="例：20,000">
+          </div>
+        </div>
+      </div>
+
+      <div id="fee-baozu" style="display:${isBaozu?'block':'none'}">
+        <div class="card" style="border-left:4px solid #7e22ce">
+          <div class="card-title"><i class="ti ti-currency-dollar"></i>包租費用資料</div>
+          <div style="font-size:12px;color:var(--muted);background:#f3e8ff;border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.8">
+            禾大向屋主承租，再轉租給房客賺取差額<br>
+            <strong>引薦人獎金</strong> = 月差額 × 1個月（簽約時＋第6個月）
+          </div>
+          <div class="field">
+            <div class="field-label">市場月租 (NT$) <span style="color:#c62828">*</span></div>
+            <div style="font-size:11px;color:var(--hint);margin-bottom:5px">禾大轉租給房客的金額（市場行情）</div>
+            <input type="text" id="inp-marketRent" data-key="marketRent" value="${p.marketRent||''}" placeholder="例：25,000">
+          </div>
+          <div class="field">
+            <div class="field-label">禾大收租 (NT$) <span style="color:#c62828">*</span></div>
+            <div style="font-size:11px;color:var(--hint);margin-bottom:5px">禾大每月保證付給屋主的固定金額</div>
+            <input type="text" id="inp-hodaRent" data-key="hodaRent" value="${p.hodaRent||''}" placeholder="例：20,000">
+          </div>
+          <div style="background:#f3f4f6;border-radius:10px;padding:12px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:12px;color:var(--muted)">月差額（引薦獎金基準）</div>
+              <div style="font-size:11px;color:var(--hint)">市場月租 − 禾大收租</div>
+            </div>
+            <div id="spread-display" style="font-size:20px;font-weight:900;color:var(--navy)">NT$ —</div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title"><i class="ti ti-users-group"></i>引薦 / 管理人員 <span style="font-size:11px;font-weight:400;color:var(--hint)">(選填)</span></div>
-        <div class="field"><div class="field-label">引薦人姓名</div><input type="text" data-key="referrer" value="${p.referrer||''}" placeholder="推薦此物件簽約的人"></div>
-        <div class="field"><div class="field-label">負責管理人員</div><input type="text" data-key="manager" value="${p.manager||''}" placeholder="負責日常管理的業務"></div>
+        <div class="field">
+          <div class="field-label">引薦人姓名</div>
+          <div style="font-size:11px;color:var(--hint);margin-bottom:5px">帶來此物件簽約機會的人</div>
+          <input type="text" data-key="referrer" value="${p.referrer||''}" placeholder="姓名（留空代表無引薦人）">
+        </div>
+        <div class="field">
+          <div class="field-label">負責管理人員</div>
+          <div style="font-size:11px;color:var(--hint);margin-bottom:5px">日後負責日常管理此物件的業務</div>
+          <input type="text" data-key="manager" value="${p.manager||''}" placeholder="姓名（留空代表尚未指派）">
+        </div>
         <div class="field"><div class="field-label">備注</div><textarea data-key="note" placeholder="其他注意事項...">${p.note||''}</textarea></div>
       </div>
-      <div style="background:var(--gold-light);border:1px solid #e8d5a3;border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:12px;color:#7a5c1a;line-height:1.8">
-        <strong>獎金排程預覽（送出後自動生成）</strong><br>
-        代管引薦人：首月管理費×50%，分三期(40/30/30%)發放<br>
-        包租引薦人：月差額×1個月，簽約+第6個月各一次<br>
-        管理人員：月代管費×15%（六個月結一次）<br>
-        感謝禮：引薦人1次/年，管理人員2次/年（各NT$1,500）
-      </div>
+
+      <div id="bonus-preview" style="background:var(--gold-light);border:1px solid #e8d5a3;border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:12px;color:#7a5c1a;line-height:2"></div>
+
       <button class="btn-primary" id="prop-submit"><i class="ti ti-device-floppy" style="font-size:17px"></i>登錄並生成獎金排程</button>
     </div>`);
+
   bindField(app, propState.property);
   app.querySelector("#prop-home-btn").addEventListener("click", renderDashboard);
-  const mgmtSel = app.querySelector("select[data-key='mgmtType']");
-  const toggleBaozuFields = () => {
-    const isBaozu = mgmtSel.value === "包租";
-    const mf = document.getElementById("prop-market-field"), hf = document.getElementById("prop-hoda-field");
-    if (mf) mf.style.display = isBaozu ? "block" : "none";
-    if (hf) hf.style.display = isBaozu ? "block" : "none";
-  };
-  mgmtSel.addEventListener("change", toggleBaozuFields);
+
+  function updateSpread() {
+    const m = parseInt(document.getElementById("inp-marketRent")?.value)||0;
+    const h = parseInt(document.getElementById("inp-hodaRent")?.value)||0;
+    const el = document.getElementById("spread-display");
+    if (el) el.textContent = m && h ? `NT$ ${(m-h).toLocaleString()}` : "NT$ —";
+  }
+  document.getElementById("inp-marketRent")?.addEventListener("input", updateSpread);
+  document.getElementById("inp-hodaRent")?.addEventListener("input", updateSpread);
+  updateSpread();
+
+  function updateBonusPreview() {
+    const el = document.getElementById("bonus-preview");
+    if (!el) return;
+    const isB = propState.property.mgmtType === "包租";
+    if (isB) {
+      el.innerHTML = `<strong>📋 包租獎金排程（登錄後自動生成）</strong><br>
+        引薦人 · 簽約時：月差額 × 1個月<br>
+        引薦人 · 第6個月：月差額 × 1個月<br>
+        引薦人 · 感謝禮：NT$1,500 × 1次/年<br>
+        管理人員 · 每6個月：月租 × 15% × 6<br>
+        管理人員 · 感謝禮：NT$1,500 × 2次/年`;
+    } else {
+      el.innerHTML = `<strong>📋 代管獎金排程（登錄後自動生成）</strong><br>
+        引薦人 · 第0個月：代管費 × 50% × 40%<br>
+        引薦人 · 第6個月：代管費 × 50% × 30%<br>
+        引薦人 · 第12個月：代管費 × 50% × 30%<br>
+        引薦人 · 感謝禮：NT$1,500 × 1次/年<br>
+        管理人員 · 每6個月：代管費 × 15% × 6<br>
+        管理人員 · 感謝禮：NT$1,500 × 2次/年`;
+    }
+  }
+  updateBonusPreview();
+
+  function switchMgmtType(type) {
+    propState.property.mgmtType = type;
+    const isBaozu = type === "包租";
+    document.getElementById("fee-daimgmt").style.display = isBaozu ? "none" : "block";
+    document.getElementById("fee-baozu").style.display = isBaozu ? "block" : "none";
+    const btnD = document.getElementById("btn-daimgmt"), btnB = document.getElementById("btn-baozu");
+    btnD.style.background = isBaozu ? "white" : "var(--navy)"; btnD.style.color = isBaozu ? "#374151" : "white"; btnD.style.borderColor = isBaozu ? "#e5e7eb" : "var(--navy)";
+    btnB.style.background = isBaozu ? "var(--navy)" : "white"; btnB.style.color = isBaozu ? "white" : "#374151"; btnB.style.borderColor = isBaozu ? "var(--navy)" : "#e5e7eb";
+    updateBonusPreview();
+  }
+  document.getElementById("btn-daimgmt").addEventListener("click", () => switchMgmtType("代管"));
+  document.getElementById("btn-baozu").addEventListener("click", () => switchMgmtType("包租"));
+
   app.querySelector("#prop-submit").addEventListener("click", async () => {
     const p = propState.property;
     if (!p.address) { alert("請填寫物件地址"); return; }
+    if (p.mgmtType === "代管" && !p.mgmtFee) { alert("請填寫每月代管費"); return; }
+    if (p.mgmtType === "包租" && (!p.marketRent || !p.hodaRent)) { alert("請填寫市場月租與禾大收租"); return; }
     const btn = app.querySelector("#prop-submit"); btn.disabled = true; btn.textContent = "送出中...";
     const ok = await postToSheets("property", { property: p, registrar: session.user, submittedAt: new Date().toISOString() });
     if (ok) { propState.submitted = true; renderPropDone(); }
