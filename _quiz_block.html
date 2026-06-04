@@ -1,0 +1,135 @@
+<!-- ══════════════════════════════════════════════════
+     禾大屋管 ‧ 租金補貼資格確認工具
+══════════════════════════════════════════════════ -->
+<section id="quiz" style="background:var(--cream-dark);padding:72px 20px;">
+<div style="max-width:680px;margin:0 auto;">
+
+  <!-- 標題 -->
+  <div style="text-align:center;margin-bottom:36px;">
+    <div style="display:inline-block;background:#e05c2a;color:#fff;font-size:0.7rem;font-weight:700;letter-spacing:2px;padding:5px 14px;border-radius:20px;margin-bottom:12px;">禾大屋管・免費確認工具</div>
+    <h2 style="font-family:'Noto Serif TC',serif;font-size:1.6rem;font-weight:700;color:var(--green-deep);margin:0 0 10px;">一鍵確認你的租金補貼資格</h2>
+    <p style="color:var(--text-soft);font-size:0.9rem;margin:0;">回答 7 個問題，立即顯示你的預估補貼金額與申請建議</p>
+  </div>
+
+  <!-- 卡片 -->
+  <div id="qz-card" style="background:#fff;border-radius:14px;box-shadow:0 4px 30px rgba(0,0,0,0.08);padding:36px 40px;position:relative;overflow:hidden;">
+
+    <!-- 進度條 -->
+    <div style="height:4px;background:#eee;border-radius:2px;margin-bottom:28px;">
+      <div id="qz-bar" style="height:4px;background:var(--green-mid);border-radius:2px;width:14%;transition:width .4s;"></div>
+    </div>
+    <div id="qz-step-label" style="font-size:0.72rem;color:var(--text-soft);letter-spacing:1px;margin-bottom:18px;">步驟 1 / 7</div>
+
+    <!-- 問題區塊 -->
+    <div id="qz-body"></div>
+
+    <!-- 按鈕列 -->
+    <div id="qz-nav" style="display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;"></div>
+  </div>
+
+</div>
+</section>
+
+<style>
+.qz-q{font-family:'Noto Serif TC',serif;font-size:1.18rem;font-weight:700;color:var(--green-deep);margin:0 0 20px;line-height:1.5;}
+.qz-opt{display:block;width:100%;text-align:left;padding:14px 18px;margin-bottom:10px;border:2px solid #e0ddd6;border-radius:8px;background:#fff;cursor:pointer;font-size:0.93rem;color:var(--text-dark);transition:border-color .2s,background .2s;font-family:'Noto Sans TC',sans-serif;}
+.qz-opt:hover{border-color:var(--green-mid);background:#f3f8f5;}
+.qz-opt.selected{border-color:var(--green-mid);background:#edf6f1;font-weight:700;color:var(--green-deep);}
+.qz-opt.multi{position:relative;padding-left:46px;}
+.qz-opt.multi::before{content:'☐';position:absolute;left:16px;font-size:1.1rem;color:#aaa;}
+.qz-opt.multi.selected::before{content:'☑';color:var(--green-mid);}
+.qz-btn{padding:12px 28px;border-radius:6px;border:none;cursor:pointer;font-size:0.9rem;font-weight:700;font-family:'Noto Sans TC',sans-serif;transition:all .2s;}
+.qz-btn-next{background:var(--green-mid);color:#fff;}
+.qz-btn-next:hover{background:var(--green-deep);}
+.qz-btn-back{background:#f0ede8;color:var(--text-mid);}
+.qz-btn-back:hover{background:#e0ddd6;}
+.qz-city-sel{width:100%;padding:13px 16px;border:2px solid #e0ddd6;border-radius:8px;font-size:0.93rem;color:var(--text-dark);background:#fff;outline:none;font-family:'Noto Sans TC',sans-serif;cursor:pointer;}
+.qz-city-sel:focus{border-color:var(--green-mid);}
+/* 結果卡片 */
+.qz-result-ok{text-align:center;}
+.qz-result-badge{display:inline-block;background:#edf6f1;color:var(--green-deep);font-size:0.75rem;font-weight:700;letter-spacing:2px;padding:5px 16px;border-radius:20px;margin-bottom:16px;}
+.qz-result-amount{font-family:'Noto Serif TC',serif;font-size:2.8rem;font-weight:900;color:var(--green-mid);line-height:1;}
+.qz-result-unit{font-size:1rem;font-weight:400;color:var(--text-soft);}
+.qz-result-note{font-size:0.8rem;color:var(--text-soft);margin:6px 0 20px;}
+.qz-result-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:22px;}
+.qz-result-tag{background:#f3f8f5;border:1px solid #c5e0d0;color:var(--green-deep);font-size:0.75rem;padding:4px 12px;border-radius:20px;}
+.qz-result-tag.warn{background:#fff8f0;border-color:#f5c48a;color:#8a5000;}
+.qz-cta-box{background:linear-gradient(135deg,var(--green-deep),var(--green-mid));border-radius:10px;padding:22px 24px;color:#fff;margin-top:8px;text-align:left;}
+.qz-cta-box h4{font-family:'Noto Serif TC',serif;font-size:1rem;font-weight:700;margin:0 0 6px;}
+.qz-cta-box p{font-size:0.82rem;color:rgba(255,255,255,0.8);margin:0 0 14px;line-height:1.6;}
+.qz-cta-btns{display:flex;gap:10px;flex-wrap:wrap;}
+.qz-cta-a{padding:10px 20px;border-radius:6px;font-size:0.85rem;font-weight:700;text-decoration:none;transition:all .2s;}
+.qz-cta-line{background:var(--gold);color:var(--green-deep);}
+.qz-cta-line:hover{background:#e0bf74;}
+.qz-cta-gov{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);}
+.qz-cta-gov:hover{background:rgba(255,255,255,.1);}
+.qz-result-no{text-align:center;}
+.qz-no-icon{font-size:2.4rem;margin-bottom:10px;}
+.qz-no-title{font-family:'Noto Serif TC',serif;font-size:1.2rem;font-weight:700;color:var(--green-deep);margin-bottom:8px;}
+.qz-no-msg{font-size:0.87rem;color:var(--text-mid);line-height:1.7;margin-bottom:18px;}
+.qz-restart{background:var(--green-mid);color:#fff;border:none;padding:12px 28px;border-radius:6px;cursor:pointer;font-weight:700;font-family:'Noto Sans TC',sans-serif;}
+@media(max-width:600px){
+  #qz-card{padding:24px 18px;}
+  .qz-result-amount{font-size:2.2rem;}
+  .qz-cta-btns{flex-direction:column;}
+}
+</style>
+
+<script>
+(function(){
+/* ── 資料 ── */
+var CITIES = [
+  {name:'台北市',  max:8000, tier:'A'},
+  {name:'新北市',  max:6500, tier:'B'},
+  {name:'桃園市',  max:5500, tier:'C'},
+  {name:'台中市',  max:5500, tier:'C'},
+  {name:'台南市',  max:5500, tier:'C'},
+  {name:'高雄市',  max:5500, tier:'C'},
+  {name:'基隆市',  max:4500, tier:'D'},
+  {name:'新竹縣市',max:4500, tier:'D'},
+  {name:'苗栗縣',  max:4500, tier:'D'},
+  {name:'彰化縣',  max:4500, tier:'D'},
+  {name:'南投縣',  max:4500, tier:'D'},
+  {name:'雲林縣',  max:4500, tier:'D'},
+  {name:'嘉義縣市',max:4500, tier:'D'},
+  {name:'屏東縣',  max:4500, tier:'D'},
+  {name:'宜蘭縣',  max:4500, tier:'D'},
+  {name:'花蓮縣',  max:4500, tier:'D'},
+  {name:'台東縣',  max:4500, tier:'D'},
+  {name:'澎湖縣',  max:4500, tier:'D'},
+  {name:'金門縣',  max:4500, tier:'D'},
+  {name:'連江縣',  max:4500, tier:'D'},
+];
+
+var STEPS = [
+  {id:'s1', q:'你目前的居住狀況是？', type:'single',
+   opts:[
+     {txt:'🏠 租屋中（繳房租）',  val:'rent'},
+     {txt:'🏡 住在自己名下的房子',  val:'own', stop:'own'},
+     {txt:'🏫 住學校宿舍或公司宿舍', val:'dorm', stop:'dorm'},
+   ]},
+  {id:'s2', q:'你租的是哪種房子？', type:'single',
+   opts:[
+     {txt:'🏘️ 一般私人房東出租的住宅', val:'private'},
+     {txt:'🏛️ 政府興建的社會住宅 / 國宅', val:'gov', stop:'gov_house'},
+     {txt:'👥 親友同意居住（未繳租金）', val:'free', stop:'no_contract'},
+   ]},
+  {id:'s3', q:'你有正式的書面租賃契約嗎？', type:'single',
+   hint:'契約需向戶籍地地政局辦理備案，補貼才能核准',
+   opts:[
+     {txt:'✅ 有，且已向地政局登記備案', val:'reg'},
+     {txt:'📄 有書面契約，但尚未備案',    val:'unreg', warn:'unreg'},
+     {txt:'❌ 沒有書面契約',             val:'none', stop:'no_contract'},
+   ]},
+  {id:'s4', q:'你或同住家人在全台灣有自有住宅嗎？', type:'single',
+   opts:[
+     {txt:'沒有，全家都沒有房子',         val:'none'},
+     {txt:'有，但因就業 / 就學在外租屋',  val:'special'},
+     {txt:'有，我就住在自己的房子裡',      val:'own', stop:'own'},
+   ]},
+  {id:'s5', q:'你符合以下哪些身份？（可複選，沒有請選「以上皆無」）', type:'multi',
+   opts:[
+     {txt:'♿ 領有身心障礙證明',     val:'disabled'},
+     {txt:'🏷️ 低收入戶 / 中低收入戶', val:'low_income'},
+     {txt:'🌿 原住民族',              val:'indigenous'},
+     {txt:'👴 65 歲以上長者',         val:'elderly'
