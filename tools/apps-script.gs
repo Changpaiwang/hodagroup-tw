@@ -12,6 +12,7 @@ const SHEET_BONUS_SCHEDULE = "獎金排程";
 const SHEET_BONUS_RECORD   = "獎金記錄";
 const SHEET_PARAMS         = "系統參數";
 const SHEET_LOG            = "操作記錄";
+const SHEET_TENANT         = "房客資料";
 
 // ─── POST 主入口 ───
 function doPost(e) {
@@ -25,6 +26,10 @@ function doPost(e) {
     else if (data.type === "update_checklist") { updateChecklist(ss, data); sendChecklistEmail(data, true); }
     else if (data.type === "update_scoring")   { updateScoring(ss, data);   sendScoringEmail(data, true); }
     else if (data.type === "property")         { saveProperty(ss, data);    sendPropertyEmail(data);         logType = "property"; }
+    else if (data.type === "update_property")  { updateProperty(ss, data); }
+    else if (data.type === "tenant")           { saveTenant(ss, data);      logType = "tenant"; }
+    else if (data.type === "update_tenant")    { updateTenant(ss, data); }
+    else if (data.type === "delete_tenant")    { deleteTenant(ss, data); }
     else if (data.type === "pay_bonus")        { payBonus(ss, data); }
     else if (data.type === "edit_bonus")       { editBonus(ss, data); }
     else if (data.type === "delete_bonus")     { deleteBonus(ss, data); }
@@ -45,7 +50,8 @@ function doGet(e) {
   if (params.action === "bonus_dashboard") return listBonusDashboard();
   if (params.action === "params")          return getParams();
   if (params.action === "property_list")   return listProperties();
-  return ContentService.createTextOutput(JSON.stringify({ status: "ok", version: "3.0" })).setMimeType(ContentService.MimeType.JSON);
+  if (params.action === "tenant_list")     return listTenants(params.buildingId || "");
+  return ContentService.createTextOutput(JSON.stringify({ status: "ok", version: "3.1" })).setMimeType(ContentService.MimeType.JSON);
 }
 
 // ─── 列表查詢（勘查清單 / 評分） ───
@@ -299,6 +305,131 @@ function listProperties() {
     headers.forEach((h, j) => { obj[h] = row[j] instanceof Date ? row[j].toISOString() : row[j]; });
     return obj;
   }).reverse();
+
+  return ContentService.createTextOutput(JSON.stringify({ rows })).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ─── 更新物件台帳（房東資料可修改） ───
+function updateProperty(ss, data) {
+  const sheet = ss.getSheetByName(SHEET_PROPERTY);
+  if (!sheet || !data._rowIndex) return;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const p = data.property || {};
+  const setCol = (headerName, val) => {
+    const col = headers.indexOf(headerName) + 1;
+    if (col) sheet.getRange(data._rowIndex, col).setValue(val);
+  };
+  if (p.address    !== undefined) setCol("物件地址", p.address);
+  if (p.ownerName  !== undefined) setCol("屋主姓名", p.ownerName);
+  if (p.ownerPhone !== undefined) setCol("屋主電話", p.ownerPhone);
+  if (p.mgmtType   !== undefined) setCol("管理方式", p.mgmtType);
+  if (p.rentAmount !== undefined) setCol("月租金(NT$)", p.rentAmount);
+  if (p.mgmtFee    !== undefined) setCol("代管費(NT$)", p.mgmtFee);
+  if (p.marketRent !== undefined) setCol("市場月租(NT$)", p.marketRent);
+  if (p.hodaRent   !== undefined) setCol("禾大收租(NT$)", p.hodaRent);
+  if (p.referrer   !== undefined) setCol("引薦人", p.referrer);
+  if (p.manager    !== undefined) setCol("管理人員", p.manager);
+  if (p.note       !== undefined) setCol("備注", p.note);
+  // 若市場月租 / 禾大收租有更新，重算月價差
+  if (p.marketRent !== undefined || p.hodaRent !== undefined) {
+    const mCol = headers.indexOf("市場月租(NT$)") + 1;
+    const hCol = headers.indexOf("禾大收租(NT$)") + 1;
+    if (mCol && hCol) {
+      const m = parseInt(sheet.getRange(data._rowIndex, mCol).getValue()) || 0;
+      const h = parseInt(sheet.getRange(data._rowIndex, hCol).getValue()) || 0;
+      setCol("月價差(NT$)", (m - h) > 0 ? (m - h) : "");
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  房客資料 CRUD（可手動新增，或由 HERMES 讀合約PDF後 POST 進來）
+//  POST { type:"tenant", registrar, tenant:{...} }
+// ═══════════════════════════════════════════════════════════
+const TENANT_HEADERS = [
+  "登錄時間","登錄人","綁定物件ID","物件地址","房號/樓層","房客姓名",
+  "身分證/統編","聯絡電話","緊急聯絡人","租期起","租期迄",
+  "月租金(NT$)","押金(NT$)","付款日","租客狀態","合約PDF連結","備注","房客ID"
+];
+
+function ensureTenantSheet(ss) {
+  let sheet = ss.getSheetByName(SHEET_TENANT);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_TENANT);
+    sheet.appendRow(TENANT_HEADERS);
+    sheet.getRange(1,1,1,sheet.getLastColumn()).setFontWeight("bold").setBackground("#1B3A5C").setFontColor("white");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function buildTenantRow(t, registrar) {
+  return [
+    new Date(), registrar || "",
+    t.buildingId||"", t.address||"", t.room||"", t.name||"",
+    t.idno||"", t.phone||"", t.emergency||"",
+    t.leaseStart||"", t.leaseEnd||"",
+    t.rent||"", t.deposit||"", t.payday||"",
+    t.status||"在租", t.contractUrl||"", t.note||"",
+    t.tenantId || ("T" + new Date().getTime())
+  ];
+}
+
+function saveTenant(ss, data) {
+  const sheet = ensureTenantSheet(ss);
+  const t = data.tenant || {};
+  sheet.appendRow(buildTenantRow(t, data.registrar));
+  const statusCol = TENANT_HEADERS.indexOf("租客狀態") + 1;
+  colorTenantRow(sheet, sheet.getLastRow(), t.status || "在租", statusCol);
+}
+
+function updateTenant(ss, data) {
+  const sheet = ss.getSheetByName(SHEET_TENANT);
+  if (!sheet || !data._rowIndex) return;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const t = data.tenant || {};
+  const map = {
+    buildingId:"綁定物件ID", address:"物件地址", room:"房號/樓層", name:"房客姓名",
+    idno:"身分證/統編", phone:"聯絡電話", emergency:"緊急聯絡人",
+    leaseStart:"租期起", leaseEnd:"租期迄", rent:"月租金(NT$)", deposit:"押金(NT$)",
+    payday:"付款日", status:"租客狀態", contractUrl:"合約PDF連結", note:"備注"
+  };
+  Object.keys(map).forEach(k => {
+    if (t[k] !== undefined) {
+      const col = headers.indexOf(map[k]) + 1;
+      if (col) sheet.getRange(data._rowIndex, col).setValue(t[k]);
+    }
+  });
+  if (t.status !== undefined) colorTenantRow(sheet, data._rowIndex, t.status, headers.indexOf("租客狀態") + 1);
+}
+
+function deleteTenant(ss, data) {
+  const sheet = ss.getSheetByName(SHEET_TENANT);
+  if (!sheet || !data._rowIndex) return;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const statusCol = headers.indexOf("租客狀態") + 1;
+  if (statusCol) sheet.getRange(data._rowIndex, statusCol).setValue("已退租");
+  colorTenantRow(sheet, data._rowIndex, "已退租", statusCol);
+}
+
+function colorTenantRow(sheet, rowNum, status, statusCol) {
+  const bg = status === "在租" ? "#e8f5e9" : status === "已退租" ? "#eeeeee" : "#fff8e1";
+  if (statusCol) sheet.getRange(rowNum, statusCol).setBackground(bg);
+}
+
+function listTenants(buildingId) {
+  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_TENANT);
+  if (!sheet || sheet.getLastRow() < 2) return ContentService.createTextOutput(JSON.stringify({ rows: [] })).setMimeType(ContentService.MimeType.JSON);
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0];
+  let rows      = data.slice(1).map((row, i) => {
+    const obj = { _rowIndex: i + 2 };
+    headers.forEach((h, j) => { obj[h] = row[j] instanceof Date ? row[j].toISOString() : row[j]; });
+    return obj;
+  }).reverse();
+  if (buildingId) rows = rows.filter(r => String(r["綁定物件ID"]) === String(buildingId));
 
   return ContentService.createTextOutput(JSON.stringify({ rows })).setMimeType(ContentService.MimeType.JSON);
 }

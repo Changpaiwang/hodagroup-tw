@@ -717,6 +717,20 @@ function renderDashboard() {
             <span class="tool-tag tag-green">Email通知</span>
           </div>
         </div>
+        <div class="tool-card" id="go-tenant">
+          <div class="tool-card-header">
+            <div class="tool-icon tool-icon-4"><i class="ti ti-users" style="font-size:26px"></i></div>
+            <div style="flex:1">
+              <div class="tool-card-title">房客 / 房東資料管理</div>
+              <div class="tool-card-desc">修改房東（物件台帳）資料，新增或編輯每個物件的房客資料</div>
+            </div>
+            <i class="ti ti-chevron-right tool-card-arrow"></i>
+          </div>
+          <div class="tool-card-footer">
+            <span class="tool-tag tag-blue">房東可修改</span>
+            <span class="tool-tag tag-green">房客新增/編輯</span>
+          </div>
+        </div>
         <div class="tool-card" id="go-bonus">
           <div class="tool-card-header">
             <div class="tool-icon tool-icon-5"><i class="ti ti-cash" style="font-size:26px"></i></div>
@@ -764,6 +778,7 @@ function renderDashboard() {
   document.getElementById("go-history").addEventListener("click", () => { histState.tab="checklist"; histState.rows=[]; histState.selectedRow=null; renderHistory(); });
   if (session.isAdmin) {
     document.getElementById("go-property").addEventListener("click", renderPropertyRegistry);
+    document.getElementById("go-tenant").addEventListener("click", renderTenantMgmt);
     document.getElementById("go-bonus").addEventListener("click", renderBonusDashboard);
     document.getElementById("go-settings").addEventListener("click", renderSettings);
   }
@@ -1362,6 +1377,204 @@ function renderPropDone() {
   app.querySelector("#prop-new").addEventListener("click", () => { propState={property:{address:"",ownerName:"",ownerPhone:"",mgmtType:"代管",signDate:new Date().toISOString().slice(0,10),contractYears:"2",rentAmount:"",mgmtFee:"",marketRent:"",hodaRent:"",referrer:"",referrerEmail:"",manager:"",managerEmail:"",note:""},submitted:false}; renderPropertyRegistry(); });
   app.querySelector("#prop-bonus").addEventListener("click", renderBonusDashboard);
   app.querySelector("#prop-dash").addEventListener("click", renderDashboard);
+}
+
+/* ════════════════════════════════
+   房客 / 房東資料管理 (TenantMgmt)
+════════════════════════════════ */
+let tmState = { properties: [], selectedProp: null, tenants: [] };
+
+async function tmFetch(action, extra) {
+  if (CONFIG.SCRIPT_URL === "YOUR_APPS_SCRIPT_URL_HERE") return [];
+  try {
+    const res = await fetch(`${CONFIG.SCRIPT_URL}?action=${action}${extra||''}`);
+    const json = await res.json();
+    return json.rows || [];
+  } catch(e) { return []; }
+}
+
+function tmHeader(title, sub) {
+  return `
+    <div class="header" style="position:relative">
+      <button class="logout-btn" id="tm-home-btn"><i class="ti ti-home" style="font-size:13px"></i>首頁</button>
+      <div class="header-badge">禾大屋管 HODA</div>
+      <div class="header-title">${title}</div>
+      <div class="header-sub">${sub}</div>
+    </div>`;
+}
+
+async function renderTenantMgmt() {
+  currentView = "tenant";
+  setHTML(tmHeader("房客 / 房東資料管理", "載入物件台帳中…") + `<div class="page"><div class="card" style="text-align:center;color:var(--muted);padding:30px"><i class="ti ti-loader" style="font-size:24px"></i><br>載入中…</div></div>`);
+  document.getElementById("tm-home-btn").addEventListener("click", renderDashboard);
+
+  tmState.properties = await tmFetch("property_list");
+  const list = tmState.properties.map((p, i) => `
+    <div class="tool-card tm-prop" data-i="${i}" style="cursor:pointer">
+      <div class="tool-card-header">
+        <div class="tool-icon tool-icon-4" style="width:40px;height:40px"><i class="ti ti-building" style="font-size:20px"></i></div>
+        <div style="flex:1">
+          <div class="tool-card-title" style="font-size:15px">${p['物件地址']||'(地址未填)'}</div>
+          <div class="tool-card-desc">屋主 ${p['屋主姓名']||'—'} · ${p['屋主電話']||'—'} · ${p['管理方式']||'—'}</div>
+        </div>
+        <i class="ti ti-chevron-right tool-card-arrow"></i>
+      </div>
+    </div>`).join('');
+
+  setHTML(tmHeader("房客 / 房東資料管理", "點選物件以修改房東或管理房客") + `
+    <div class="page">
+      ${tmState.properties.length ? list : `<div class="card" style="text-align:center;color:var(--muted);padding:30px">目前沒有物件台帳資料<br><span style="font-size:12px;color:var(--hint)">請先到「物件台帳登錄」新增物件</span></div>`}
+      <button class="btn-secondary" id="tm-refresh" style="width:100%;margin-top:6px"><i class="ti ti-refresh" style="font-size:15px"></i>重新整理</button>
+    </div>`);
+  document.getElementById("tm-home-btn").addEventListener("click", renderDashboard);
+  document.getElementById("tm-refresh").addEventListener("click", renderTenantMgmt);
+  document.querySelectorAll(".tm-prop").forEach(el => el.addEventListener("click", () => openProp(tmState.properties[+el.dataset.i])));
+}
+
+async function openProp(prop) {
+  tmState.selectedProp = prop;
+  setHTML(tmHeader("物件詳情", prop['物件地址']||'') + `<div class="page"><div class="card" style="text-align:center;color:var(--muted);padding:30px">載入房客中…</div></div>`);
+  document.getElementById("tm-home-btn").addEventListener("click", renderDashboard);
+
+  tmState.tenants = await tmFetch("tenant_list", `&buildingId=${encodeURIComponent(prop['物件ID']||'')}`);
+  const edit = { address:prop['物件地址']||'', ownerName:prop['屋主姓名']||'', ownerPhone:prop['屋主電話']||'',
+    mgmtType:prop['管理方式']||'', rentAmount:prop['月租金(NT$)']||'', mgmtFee:prop['代管費(NT$)']||'',
+    marketRent:prop['市場月租(NT$)']||'', hodaRent:prop['禾大收租(NT$)']||'',
+    referrer:prop['引薦人']||'', manager:prop['管理人員']||'', note:prop['備注']||'' };
+
+  const tenantRows = tmState.tenants.map((t, i) => {
+    const stColor = t['租客狀態']==='在租' ? '#2e7d32' : t['租客狀態']==='已退租' ? '#999' : '#a86b00';
+    return `
+    <div class="card tm-tenant" style="padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--navy);font-size:15px">${t['房客姓名']||'(未命名)'} <span style="font-size:11px;font-weight:600;color:${stColor};background:#f3f4f6;border-radius:6px;padding:1px 7px;margin-left:4px">${t['租客狀態']||'—'}</span></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">${t['房號/樓層']?t['房號/樓層']+' · ':''}${t['聯絡電話']||'—'}</div>
+          <div style="font-size:12px;color:var(--hint);margin-top:2px">租期 ${(t['租期起']||'').slice(0,10)||'—'} ~ ${(t['租期迄']||'').slice(0,10)||'—'} · 月租 ${t['月租金(NT$)']?'NT$'+t['月租金(NT$)']:'—'}</div>
+          ${t['合約PDF連結']?`<a href="${t['合約PDF連結']}" target="_blank" style="font-size:12px;color:#1565c0"><i class="ti ti-file-text" style="font-size:12px"></i> 合約PDF</a>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="tm-t-edit" data-i="${i}" style="border:1px solid var(--navy);background:white;color:var(--navy);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">編輯</button>
+          ${t['租客狀態']!=='已退租'?`<button class="tm-t-exit" data-i="${i}" style="border:1px solid #d1d5db;background:white;color:#c62828;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">退租</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  setHTML(tmHeader("物件詳情", prop['物件地址']||'') + `
+    <div class="page">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-user-circle"></i>房東（物件台帳）資料 <span style="font-size:11px;font-weight:400;color:var(--hint)">可修改</span></div>
+        <div class="field"><div class="field-label">物件地址</div><input type="text" data-key="address" value="${edit.address}"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">屋主姓名</div><input type="text" data-key="ownerName" value="${edit.ownerName}"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">屋主電話</div><input type="tel" data-key="ownerPhone" value="${edit.ownerPhone}"></div>
+        </div>
+        <div class="field"><div class="field-label">管理方式</div><select data-key="mgmtType"><option value="">請選擇</option>${["代管","包租","待定"].map(o=>`<option value="${o}" ${edit.mgmtType===o?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">月租金 (NT$)</div><input type="text" data-key="rentAmount" value="${edit.rentAmount}"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">代管費 (NT$)</div><input type="text" data-key="mgmtFee" value="${edit.mgmtFee}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">市場月租 (NT$)</div><input type="text" data-key="marketRent" value="${edit.marketRent}"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">禾大收租 (NT$)</div><input type="text" data-key="hodaRent" value="${edit.hodaRent}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">引薦人</div><input type="text" data-key="referrer" value="${edit.referrer}"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">管理人員</div><input type="text" data-key="manager" value="${edit.manager}"></div>
+        </div>
+        <div class="field"><div class="field-label">備注</div><textarea data-key="note">${edit.note}</textarea></div>
+        <button class="btn-primary" id="tm-save-owner" style="margin-top:4px"><i class="ti ti-device-floppy" style="font-size:16px"></i>儲存房東資料</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span><i class="ti ti-users"></i>房客資料（${tmState.tenants.length}）</span>
+          <button id="tm-add-tenant" style="border:none;background:var(--navy);color:white;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-plus" style="font-size:13px;vertical-align:-2px"></i> 新增房客</button>
+        </div>
+        ${tmState.tenants.length ? tenantRows : `<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px">尚無房客資料<br><span style="font-size:11px;color:var(--hint)">可手動新增，或由 HERMES 讀合約PDF自動建立</span></div>`}
+      </div>
+
+      <button class="btn-secondary" id="tm-back" style="width:100%"><i class="ti ti-arrow-left" style="font-size:15px"></i>返回物件列表</button>
+    </div>`);
+
+  document.getElementById("tm-home-btn").addEventListener("click", renderDashboard);
+  document.getElementById("tm-back").addEventListener("click", renderTenantMgmt);
+  bindField(app, edit);
+  document.getElementById("tm-save-owner").addEventListener("click", async () => {
+    const btn = document.getElementById("tm-save-owner"); btn.disabled = true; btn.textContent = "儲存中…";
+    await postToSheets("update_property", { _rowIndex: prop._rowIndex, property: edit });
+    btn.innerHTML = '<i class="ti ti-check" style="font-size:16px"></i>已儲存';
+    Object.assign(prop, { '物件地址':edit.address,'屋主姓名':edit.ownerName,'屋主電話':edit.ownerPhone,'管理方式':edit.mgmtType,'月租金(NT$)':edit.rentAmount,'代管費(NT$)':edit.mgmtFee,'市場月租(NT$)':edit.marketRent,'禾大收租(NT$)':edit.hodaRent,'引薦人':edit.referrer,'管理人員':edit.manager,'備注':edit.note });
+    setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:16px"></i>儲存房東資料'; }, 1500);
+  });
+  document.getElementById("tm-add-tenant").addEventListener("click", () => renderTenantForm(prop, null));
+  document.querySelectorAll(".tm-t-edit").forEach(el => el.addEventListener("click", () => renderTenantForm(prop, tmState.tenants[+el.dataset.i])));
+  document.querySelectorAll(".tm-t-exit").forEach(el => el.addEventListener("click", async () => {
+    const t = tmState.tenants[+el.dataset.i];
+    if (!confirm(`確定將房客「${t['房客姓名']||''}」標記為已退租？`)) return;
+    el.disabled = true; el.textContent = "處理中…";
+    await postToSheets("delete_tenant", { _rowIndex: t._rowIndex });
+    setTimeout(() => openProp(prop), 900);
+  }));
+}
+
+function renderTenantForm(prop, tenant) {
+  const isEdit = !!tenant;
+  const t = tenant ? {
+    room:tenant['房號/樓層']||'', name:tenant['房客姓名']||'', idno:tenant['身分證/統編']||'',
+    phone:tenant['聯絡電話']||'', emergency:tenant['緊急聯絡人']||'',
+    leaseStart:(tenant['租期起']||'').slice(0,10), leaseEnd:(tenant['租期迄']||'').slice(0,10),
+    rent:tenant['月租金(NT$)']||'', deposit:tenant['押金(NT$)']||'', payday:tenant['付款日']||'',
+    status:tenant['租客狀態']||'在租', contractUrl:tenant['合約PDF連結']||'', note:tenant['備注']||''
+  } : { room:'', name:'', idno:'', phone:'', emergency:'', leaseStart:'', leaseEnd:'', rent:'', deposit:'', payday:'', status:'在租', contractUrl:'', note:'' };
+
+  setHTML(tmHeader(isEdit?"編輯房客":"新增房客", prop['物件地址']||'') + `
+    <div class="page">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-user-plus"></i>房客基本資料</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">房號 / 樓層</div><input type="text" data-key="room" value="${t.room}" placeholder="例：3F / A室"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">房客姓名</div><input type="text" data-key="name" value="${t.name}" placeholder="王小明"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">身分證 / 統編</div><input type="text" data-key="idno" value="${t.idno}"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">聯絡電話</div><input type="tel" data-key="phone" value="${t.phone}"></div>
+        </div>
+        <div class="field"><div class="field-label">緊急聯絡人</div><input type="text" data-key="emergency" value="${t.emergency}" placeholder="姓名 / 關係 / 電話"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-calendar"></i>租約資料</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">租期起</div><input type="date" data-key="leaseStart" value="${t.leaseStart}"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">租期迄</div><input type="date" data-key="leaseEnd" value="${t.leaseEnd}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">月租金 (NT$)</div><input type="text" data-key="rent" value="${t.rent}"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">押金 (NT$)</div><input type="text" data-key="deposit" value="${t.deposit}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin-top:0"><div class="field-label">每月付款日</div><input type="text" data-key="payday" value="${t.payday}" placeholder="例：5"></div>
+          <div class="field" style="margin-top:0"><div class="field-label">租客狀態</div><select data-key="status">${["在租","待入住","已退租"].map(o=>`<option value="${o}" ${t.status===o?'selected':''}>${o}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><div class="field-label">合約PDF連結 <span style="font-size:11px;color:var(--hint)">(HERMES 產生後可填)</span></div><input type="text" data-key="contractUrl" value="${t.contractUrl}" placeholder="https://..." style="letter-spacing:0"></div>
+        <div class="field"><div class="field-label">備注</div><textarea data-key="note">${t.note}</textarea></div>
+      </div>
+      <button class="btn-primary" id="tm-t-save"><i class="ti ti-device-floppy" style="font-size:16px"></i>${isEdit?'儲存變更':'新增房客'}</button>
+      <button class="btn-secondary" id="tm-t-cancel" style="width:100%;margin-top:10px"><i class="ti ti-x" style="font-size:15px"></i>取消</button>
+    </div>`);
+
+  document.getElementById("tm-home-btn").addEventListener("click", renderDashboard);
+  bindField(app, t);
+  document.getElementById("tm-t-cancel").addEventListener("click", () => openProp(prop));
+  document.getElementById("tm-t-save").addEventListener("click", async () => {
+    if (!t.name) { alert("請填寫房客姓名"); return; }
+    const btn = document.getElementById("tm-t-save"); btn.disabled = true; btn.textContent = "送出中…";
+    const tenantData = Object.assign({}, t, { buildingId: prop['物件ID']||'', address: prop['物件地址']||'' });
+    if (isEdit) await postToSheets("update_tenant", { _rowIndex: tenant._rowIndex, tenant: tenantData });
+    else        await postToSheets("tenant", { registrar: session.user, submittedAt: new Date().toISOString(), tenant: tenantData });
+    setTimeout(() => openProp(prop), 900);
+  });
 }
 
 /* ════════════════════════════════
